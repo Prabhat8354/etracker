@@ -34,8 +34,26 @@ export const calculateSummary = (transactions) => {
   }
 }
 
-export const formatCurrency = (value, currency = 'USD') =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(value)
+export const formatCurrency = (value, currency = 'USD') => {
+  const symbols = {
+    USD: '$',
+    INR: '₹',
+    EUR: '€',
+    GBP: '£',
+    JPY: '¥',
+    CAD: 'C$',
+    AUD: 'A$',
+    AED: 'AED ',
+    SAR: 'SR ',
+    SGD: 'S$'
+  }
+  const symbol = symbols[currency] || '$'
+  const formatted = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value)
+  return `${symbol}${formatted}`
+}
 
 export const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 

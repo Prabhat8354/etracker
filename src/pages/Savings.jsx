@@ -1,0 +1,478 @@
+import { useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
+import {
+  Sparkles,
+  Target,
+  Clock,
+  Landmark,
+  Plus,
+  Edit2,
+  Trash2,
+  CheckCircle,
+  AlertCircle,
+  Calendar,
+  Hourglass,
+  DollarSign
+} from 'lucide-react'
+import { useExpenseContext } from '../context/ExpenseContext.jsx'
+import AddBillModal from '../components/AddBillModal.jsx'
+import { formatCurrency } from '../utils/helpers.jsx'
+
+function Savings() {
+  const { transactions, summary, settings, setSettings, rates, bills, deleteBill, toggleBillStatus } = useExpenseContext()
+  const [isBillModalOpen, setIsBillModalOpen] = useState(false)
+  const [editingBill, setEditingBill] = useState(null)
+
+  // Smart Savings Goal Calculations
+  const savingsGoal = settings.savingsGoal ?? 500
+  const period = settings.savingsGoalPeriod ?? 'monthly'
+  const currency = settings.currency || 'USD'
+
+  // Filter transactions in the current period to calculate target savings progress
+  const currentPeriodTransactions = useMemo(() => {
+    const now = new Date()
+    return transactions.filter((t) => {
+      const tDate = new Date(t.date)
+      if (period === 'daily') {
+        return tDate.toDateString() === now.toDateString()
+      }
+      if (period === 'weekly') {
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        return tDate >= oneWeekAgo && tDate <= now
+      }
+      if (period === 'yearly') {
+        return tDate.getFullYear() === now.getFullYear()
+      }
+      // monthly (default)
+      return tDate.getMonth() === now.getMonth() && tDate.getFullYear() === now.getFullYear()
+    })
+  }, [transactions, period])
+
+  const rate = rates[settings.currency] || 1
+  const periodIncome = useMemo(() => currentPeriodTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0) * rate, [currentPeriodTransactions, rate])
+  const periodExpense = useMemo(() => currentPeriodTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0) * rate, [currentPeriodTransactions, rate])
+  
+  // Real-time Savings = Inflow - Outflow in the selected goal period
+  const currentSavings = Math.max(0, periodIncome - periodExpense)
+  const savingsProgress = Math.min(100, Math.round((currentSavings / savingsGoal) * 100)) || 0
+  const remainingSavings = Math.max(0, savingsGoal - currentSavings)
+
+  // Circular ring properties
+  const radius = 35
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (savingsProgress / 100) * circumference
+
+  // Dynamic Timeline History reconstruction from all past months
+  const savingsGoalsHistory = useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const historyMap = {}
+
+    transactions.forEach(t => {
+      const date = new Date(t.date)
+      const key = `${months[date.getMonth()]} ${date.getFullYear()}`
+      if (!historyMap[key]) {
+        historyMap[key] = { income: 0, expense: 0, year: date.getFullYear(), monthIdx: date.getMonth() }
+      }
+      if (t.type === 'income') historyMap[key].income += t.amount
+      else historyMap[key].expense += t.amount
+    })
+
+    const now = new Date()
+    const currentKey = `${months[now.getMonth()]} ${now.getFullYear()}`
+
+    return Object.entries(historyMap)
+      .filter(([key]) => key !== currentKey)
+      .map(([key, data]) => {
+        const savings = Math.max(0, data.income - data.expense) * rate
+        return {
+          period: key,
+          savings,
+          goal: savingsGoal,
+          completed: savings >= savingsGoal,
+          year: data.year,
+          monthIdx: data.monthIdx
+        }
+      })
+      .sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year
+        return b.monthIdx - a.monthIdx
+      })
+  }, [transactions, rate, savingsGoal])
+
+  // Count Completed/Missed goals
+  const goalMetrics = useMemo(() => {
+    const completed = savingsGoalsHistory.filter(h => h.completed).length
+    const total = savingsGoalsHistory.length
+    return {
+      completed,
+      missed: total - completed,
+      completionRate: total > 0 ? Math.round((completed / total) * 100) : 0
+    }
+  }, [savingsGoalsHistory])
+
+  // Countdown and status highlight calculator for bills
+  const calculateDaysLeft = (dueDateString) => {
+    const due = new Date(dueDateString)
+    const now = new Date()
+    due.setHours(0, 0, 0, 0)
+    now.setHours(0, 0, 0, 0)
+    const diffTime = due.getTime() - now.getTime()
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  }
+
+  const getBillStatusConfig = (bill) => {
+    if (bill.status === 'paid') {
+      return { label: 'Paid', bg: 'bg-emerald-500/10 text-emerald-500', border: 'border-emerald-500/25', ring: 'bg-emerald-500' }
+    }
+    const daysLeft = calculateDaysLeft(bill.date)
+    if (daysLeft < 0) {
+      return { label: `Overdue (${Math.abs(daysLeft)}d)`, bg: 'bg-rose-500/10 text-rose-500', border: 'border-rose-500/25', ring: 'bg-rose-500' }
+    }
+    if (daysLeft <= 7) {
+      return { label: `Due in ${daysLeft}d`, bg: 'bg-amber-500/10 text-amber-500', border: 'border-amber-500/25', ring: 'bg-amber-500' }
+    }
+    return { label: `In ${daysLeft} days`, bg: 'bg-indigo-500/10 text-indigo-500', border: 'border-indigo-500/25', ring: 'bg-indigo-500' }
+  }
+
+  const handleEditBill = (bill) => {
+    setEditingBill(bill)
+    setIsBillModalOpen(true)
+  }
+
+  const handleCreateBill = () => {
+    setEditingBill(null)
+    setIsBillModalOpen(true)
+  }
+
+  return (
+    <div className="space-y-8 pb-10">
+      
+      {/* Title Header Card */}
+      <section className="rounded-3xl border border-slate-200/30 bg-white/60 p-8 shadow-soft backdrop-blur-md dark:border-white/[0.02] dark:bg-slate-950/40 relative overflow-hidden">
+        <div className="absolute -top-16 -right-16 h-36 w-36 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-650 dark:text-indigo-400">Savings Target</p>
+        </div>
+        <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-800 dark:text-white leading-tight">
+          Savings & Commitments
+        </h1>
+        <p className="mt-2 text-xs font-semibold text-slate-400 dark:text-slate-500 max-w-xl leading-relaxed">
+          Track smart savings indicators, review completed targets, and manage upcoming recurring bill deadlines.
+        </p>
+      </section>
+
+      {/* Grid: Savings Progress & Goals editor */}
+      <div className="grid gap-6 xl:grid-cols-[1.4fr_0.85fr]">
+        
+        {/* Savings Goal Circular Card */}
+        <div className="rounded-3xl border border-slate-200/30 bg-white/60 p-8 shadow-soft backdrop-blur-md dark:border-white/[0.02] dark:bg-slate-950/40 relative overflow-hidden flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Savings Goal Meter</p>
+                <h3 className="mt-1 text-base font-bold text-slate-800 dark:text-white">Current Period Target</h3>
+              </div>
+              <span className="rounded-lg bg-indigo-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                {savingsProgress}% Met
+              </span>
+            </div>
+
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-around gap-6">
+              
+              {/* SVG circular Ring */}
+              <div className="relative flex items-center justify-center">
+                <svg className="w-28 h-28 transform -rotate-90">
+                  <circle
+                    cx="56"
+                    cy="56"
+                    r={radius}
+                    className="stroke-slate-100 dark:stroke-slate-900"
+                    strokeWidth="6.5"
+                    fill="transparent"
+                  />
+                  <motion.circle
+                    cx="56"
+                    cy="56"
+                    r={radius}
+                    className="stroke-indigo-500"
+                    strokeWidth="6.5"
+                    fill="transparent"
+                    strokeDasharray={circumference}
+                    initial={{ strokeDashoffset: circumference }}
+                    animate={{ strokeDashoffset }}
+                    transition={{ duration: 1.2, ease: 'easeOut' }}
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-base font-black text-slate-800 dark:text-white">{savingsProgress}%</span>
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wide">Target</span>
+                </div>
+              </div>
+
+              {/* Targets Summary Indicators */}
+              <div className="space-y-4 w-full max-w-[200px]">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Period net Savings</p>
+                  <p className="text-xl font-extrabold text-slate-800 dark:text-white mt-0.5">{formatCurrency(currentSavings, currency)}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Remaining to Target</p>
+                  <p className="text-xl font-extrabold text-slate-850 dark:text-slate-350 mt-0.5">{formatCurrency(remainingSavings, currency)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Linear Progress bar */}
+          <div className="mt-8 border-t border-slate-200/20 pt-6 dark:border-white/[0.02]">
+            <div className="flex justify-between text-xs font-semibold text-slate-450 dark:text-slate-550 mb-2">
+              <span>Goal limit: {formatCurrency(savingsGoal, currency)}</span>
+              <span>{savingsProgress}% Met</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-700"
+                style={{ width: `${savingsProgress}%` }}
+              />
+            </div>
+            <p className="mt-3 text-[10px] font-semibold text-slate-400 dark:text-slate-550">
+              *Net savings calculates your total inflows minus outflows specifically within this target duration.
+            </p>
+          </div>
+        </div>
+
+        {/* Edit savings settings Card */}
+        <div className="rounded-3xl border border-slate-200/30 bg-white/60 p-8 shadow-soft backdrop-blur-md dark:border-white/[0.02] dark:bg-slate-950/40 space-y-6">
+          <div>
+            <h3 className="text-lg font-bold tracking-tight text-slate-800 dark:text-white">Smart Goal Settings</h3>
+            <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
+              Configure savings target limits and durations.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            
+            {/* Value Editor */}
+            <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-4.5 dark:border-white/[0.02] dark:bg-slate-900/10 space-y-2">
+              <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">
+                <Target className="h-4 w-4 text-indigo-500" />
+                Target Value
+              </label>
+              <input
+                type="number"
+                value={savingsGoal}
+                onChange={(event) => setSettings(prev => ({ ...prev, savingsGoal: Number(event.target.value) }))}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-750 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-indigo-400"
+                placeholder="e.g. 500"
+                min="0"
+              />
+            </div>
+
+            {/* Duration selector */}
+            <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-4.5 dark:border-white/[0.02] dark:bg-slate-900/10 space-y-2">
+              <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">
+                <Clock className="h-4 w-4 text-purple-500" />
+                Goal Duration Period
+              </label>
+              <select
+                value={period}
+                onChange={(event) => setSettings(prev => ({ ...prev, savingsGoalPeriod: event.target.value }))}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-750 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-indigo-400"
+              >
+                <option value="daily">Daily Target</option>
+                <option value="weekly">Weekly Target</option>
+                <option value="monthly">Monthly Target</option>
+                <option value="yearly">Yearly Target</option>
+              </select>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      {/* commitments / Bills Workspace */}
+      <section className="rounded-3xl border border-slate-200/30 bg-white/60 p-8 shadow-soft backdrop-blur-md dark:border-white/[0.02] dark:bg-slate-950/40">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-slate-800 dark:text-white">Upcoming Commitments</h2>
+            <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
+              Manage commitments, verify due dates, and update billing schedules.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleCreateBill}
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-md hover:bg-slate-800 dark:bg-indigo-650 dark:hover:bg-indigo-600 transition"
+          >
+            <Plus className="h-4 w-4" />
+            Add Commitment
+          </button>
+        </div>
+
+        {/* commitments List Grid */}
+        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {bills.length ? (
+            bills.map((bill) => {
+              const statusConfig = getBillStatusConfig(bill)
+              return (
+                <div
+                  key={bill.id}
+                  className="rounded-2xl border border-slate-200/30 bg-white/40 p-5 dark:border-white/[0.02] dark:bg-slate-950/20 shadow-soft flex flex-col justify-between"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${statusConfig.bg} ${statusConfig.border}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${statusConfig.ring}`} />
+                        {statusConfig.label}
+                      </span>
+                      <h4 className="mt-3 text-sm font-extrabold text-slate-800 dark:text-white truncate">{bill.name}</h4>
+                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-550 mt-1 flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Due {bill.date} • {bill.repeat}
+                      </p>
+                    </div>
+                    
+                    <p className="text-base font-black text-slate-800 dark:text-white">
+                      {formatCurrency(bill.amount, currency)}
+                    </p>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-slate-200/20 dark:border-white/[0.02] flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleBillStatus(bill.id)}
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition ${
+                        bill.status === 'paid'
+                          ? 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800'
+                          : 'bg-indigo-500 text-white shadow-sm shadow-indigo-500/10 hover:bg-indigo-650'
+                      }`}
+                    >
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      {bill.status === 'paid' ? 'Mark Pending' : 'Mark Paid'}
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleEditBill(bill)}
+                        className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-lg border border-slate-200/40 bg-white/80 text-slate-500 hover:text-slate-800 dark:border-slate-850 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-white"
+                        aria-label="Edit commitment"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('Delete this bill commitment?')) deleteBill(bill.id)
+                        }}
+                        className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-lg border border-rose-200/40 bg-rose-50/20 text-rose-500 hover:bg-rose-500/10 dark:border-rose-950/20"
+                        aria-label="Delete commitment"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="col-span-full py-6">
+              <p className="text-center text-xs font-semibold text-slate-400 dark:text-slate-500">No recurring commitments registered. Add your first commitment.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Previous Goals History Timeline */}
+      <section className="rounded-3xl border border-slate-200/30 bg-white/60 p-8 shadow-soft backdrop-blur-md dark:border-white/[0.02] dark:bg-slate-950/40">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-slate-800 dark:text-white">Savings History timeline</h2>
+          <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
+            Timeline metrics of previous goals met or missed.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-5 sm:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-5 dark:border-white/[0.02] dark:bg-slate-950/20 flex items-center gap-4">
+            <span className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <CheckCircle className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Completed Goals</p>
+              <p className="text-xl font-black text-slate-850 dark:text-white mt-0.5">{goalMetrics.completed}</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-5 dark:border-white/[0.02] dark:bg-slate-950/20 flex items-center gap-4">
+            <span className="h-10 w-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
+              <AlertCircle className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Missed Goals</p>
+              <p className="text-xl font-black text-slate-855 dark:text-white mt-0.5">{goalMetrics.missed}</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-5 dark:border-white/[0.02] dark:bg-slate-950/20 flex items-center gap-4">
+            <span className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+              <Landmark className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Avg Target Met Rate</p>
+              <p className="text-xl font-black text-slate-850 dark:text-white mt-0.5">{goalMetrics.completionRate}%</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Timeline lists */}
+        <div className="mt-8 relative border-l border-slate-200/50 pl-6 space-y-6 dark:border-white/[0.04]">
+          {savingsGoalsHistory.length ? (
+            savingsGoalsHistory.map((item, index) => (
+              <div key={index} className="relative">
+                {/* Connector Ring */}
+                <span className={`absolute -left-[30px] top-1 h-3.5 w-3.5 rounded-full border-2 bg-white dark:bg-slate-950 ${
+                  item.completed ? 'border-emerald-500' : 'border-rose-500'
+                }`} />
+                
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4.5 rounded-2xl border border-slate-200/20 bg-slate-50/20 dark:border-white/[0.02] dark:bg-slate-900/10 max-w-2xl">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 dark:text-white">{item.period}</h4>
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">
+                      Target Goal: {formatCurrency(item.goal, currency)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 text-right">Saved</p>
+                      <p className={`text-sm font-black ${item.completed ? 'text-emerald-500' : 'text-slate-800 dark:text-white'}`}>
+                        {formatCurrency(item.savings, currency)}
+                      </p>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg ${
+                      item.completed ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-650 dark:text-rose-455'
+                    }`}>
+                      {item.completed ? 'Goal Met' : 'Missed'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-550 ml-2">Timeline history will populate as months close.</p>
+          )}
+        </div>
+      </section>
+
+      {/* commitments editor Modal */}
+      <AddBillModal
+        open={isBillModalOpen}
+        onOpenChange={setIsBillModalOpen}
+        initialBill={editingBill}
+      />
+    </div>
+  )
+}
+
+export default Savings
