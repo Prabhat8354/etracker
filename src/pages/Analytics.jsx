@@ -131,7 +131,7 @@ function Analytics() {
         <div className="absolute -top-16 -right-16 h-36 w-36 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
         <div className="flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-650 dark:text-indigo-400">Financial Insights</p>
+          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-600 dark:text-indigo-400">Financial Insights</p>
         </div>
         <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-800 dark:text-white leading-tight">
           Intelligent Analytics
@@ -185,7 +185,7 @@ function Analytics() {
                       <span className="inline-flex h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{entry.category}</p>
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-550 mt-0.5">
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">
                           {new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(entry.value)}
                         </p>
                       </div>
@@ -285,7 +285,7 @@ function Analytics() {
             <p className="mt-3.5 text-2xl font-extrabold text-slate-800 dark:text-white">
               {new Intl.NumberFormat('en-US', { style: 'currency', currency: settings.currency }).format(savingsAnalytics.avgSavings)}
             </p>
-            <p className="mt-1 text-[10px] font-bold text-slate-400 dark:text-slate-550">Calculated per active month.</p>
+            <p className="mt-1 text-[10px] font-bold text-slate-400 dark:text-slate-500">Calculated per active month.</p>
           </motion.div>
 
           {/* Weekly Savings Card */}
@@ -302,7 +302,7 @@ function Analytics() {
             <p className="mt-3.5 text-2xl font-extrabold text-slate-800 dark:text-white">
               {new Intl.NumberFormat('en-US', { style: 'currency', currency: settings.currency }).format(savingsAnalytics.weeklySavings)}
             </p>
-            <p className="mt-1 text-[10px] font-bold text-slate-400 dark:text-slate-550">Average weekly savings flow.</p>
+            <p className="mt-1 text-[10px] font-bold text-slate-400 dark:text-slate-500">Average weekly savings flow.</p>
           </motion.div>
 
           {/* Highest Month Card */}
@@ -319,7 +319,7 @@ function Analytics() {
             <p className="mt-3.5 text-lg font-black text-slate-800 dark:text-white truncate">
               {savingsAnalytics.highestMonth}
             </p>
-            <p className="mt-2 text-[10px] font-bold text-slate-400 dark:text-slate-550">Record savings period.</p>
+            <p className="mt-2 text-[10px] font-bold text-slate-400 dark:text-slate-500">Record savings period.</p>
           </motion.div>
 
           {/* Goal Completion Card */}

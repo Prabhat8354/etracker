@@ -14,7 +14,8 @@ import {
   Globe,
   Gauge,
   Bell,
-  Target
+  Target,
+  Clock
 } from 'lucide-react'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import EmptyState from '../components/EmptyState.jsx'
@@ -67,7 +68,7 @@ function Settings() {
         <div className="absolute -top-16 -right-16 h-36 w-36 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
         <div className="flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-650 dark:text-indigo-400">System Preferences</p>
+          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-600 dark:text-indigo-400">System Preferences</p>
         </div>
         <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-800 dark:text-white leading-tight">
           System Settings
@@ -101,7 +102,7 @@ function Settings() {
                 )}
                 <div>
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white">Appearance theme</h3>
-                  <p className="text-[10px] text-slate-450 dark:text-slate-500 mt-0.5">Toggle light or dark mode theme styling.</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Toggle light or dark mode theme styling.</p>
                 </div>
               </div>
               
@@ -186,7 +187,7 @@ function Settings() {
                 <Bell className="h-5 w-5 text-amber-500 mt-0.5" />
                 <div>
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white">Push notifications</h3>
-                  <p className="text-[10px] text-slate-450 dark:text-slate-500 mt-0.5">Toggle alert logs and updates.</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Toggle alert logs and updates.</p>
                 </div>
               </div>
               
@@ -230,7 +231,7 @@ function Settings() {
                 type="number"
                 value={settings.savingsGoal ?? 500}
                 onChange={(event) => setSettings(prev => ({ ...prev, savingsGoal: Number(event.target.value) }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-750 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-indigo-400"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:focus:border-indigo-400"
                 placeholder="e.g. 500"
                 min="0"
               />
@@ -245,7 +246,7 @@ function Settings() {
               <select
                 value={settings.savingsGoalPeriod || 'monthly'}
                 onChange={(event) => updateSetting('savingsGoalPeriod', event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-750 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-indigo-400"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:focus:border-indigo-400"
               >
                 <option value="daily">Daily Goal</option>
                 <option value="weekly">Weekly Goal</option>
@@ -264,7 +265,7 @@ function Settings() {
                 type="number"
                 value={settings.monthlyBudget ?? 3000}
                 onChange={(event) => setSettings(prev => ({ ...prev, monthlyBudget: Number(event.target.value) }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-750 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-indigo-400"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:focus:border-indigo-400"
                 placeholder="e.g. 3000"
                 min="0"
               />
@@ -276,7 +277,7 @@ function Settings() {
               onClick={handleExport}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-650 px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-md hover:brightness-105"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-md hover:brightness-105"
             >
               <Download className="h-4 w-4" />
               Export data backup JSON
@@ -293,7 +294,7 @@ function Settings() {
                 value={importData}
                 onChange={(event) => setImportData(event.target.value)}
                 rows={4}
-                className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-indigo-400 placeholder:text-slate-450"
+                className="mt-3 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:focus:border-indigo-400 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 placeholder="Paste backup JSON details here..."
               />
               
@@ -313,7 +314,7 @@ function Settings() {
             <div className="rounded-2xl border border-rose-200/50 bg-rose-50/10 p-4.5 dark:border-rose-900/20 dark:bg-rose-950/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h4 className="text-xs font-bold text-rose-600 dark:text-rose-400">Danger Zone</h4>
-                <p className="text-[10px] text-slate-450 dark:text-slate-500 mt-0.5">Wipes out local transaction lists and settings.</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Wipes out local transaction lists and settings.</p>
               </div>
               <motion.button
                 type="button"

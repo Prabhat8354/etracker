@@ -35,7 +35,13 @@ export function ExpenseProvider({ children }) {
   const { user, authLoading } = useAuthContext()
   const [transactions, setTransactions] = useState([])
   const [bills, setBills] = useState([])
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      return localStorage.getItem('etracker_theme_dark') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [filters, setFilters] = useState({ type: 'all', category: 'all', sort: 'newest', query: '', range: 'all' })
   const [settings, setSettings] = useState({
     currency: 'USD',
@@ -85,7 +91,6 @@ export function ExpenseProvider({ children }) {
     if (!user) {
       setTransactions([])
       setBills([])
-      setDarkMode(false)
       setFilters({ type: 'all', category: 'all', sort: 'newest', query: '', range: 'all' })
       setSettings({
         currency: 'USD',
@@ -102,7 +107,6 @@ export function ExpenseProvider({ children }) {
 
     const storedData = loadFromStorage(userStorageKey(user.uid, 'data'))
     const storedBills = loadFromStorage(userStorageKey(user.uid, 'bills'))
-    const storedDark = loadFromStorage(userStorageKey(user.uid, 'dark'))
     const storedFilters = loadFromStorage(userStorageKey(user.uid, 'filters'))
     const storedSettings = loadFromStorage(userStorageKey(user.uid, 'settings'))
 
@@ -112,7 +116,6 @@ export function ExpenseProvider({ children }) {
       { id: '2', name: 'Vercel Pro Hosting', amount: 20.00, date: '2026-08-18', category: 'Software', repeat: 'monthly', status: 'pending' },
       { id: '3', name: 'AWS Cloud server', amount: 145.50, date: '2026-08-24', category: 'Software', repeat: 'monthly', status: 'pending' }
     ])
-    setDarkMode(storedDark ?? false)
     setFilters(storedFilters ?? { type: 'all', category: 'all', sort: 'newest', query: '', range: 'all' })
     setSettings(storedSettings ?? {
       currency: 'USD',
@@ -130,12 +133,16 @@ export function ExpenseProvider({ children }) {
     if (!user || authLoading || isLoading) return
     saveToStorage(userStorageKey(user.uid, 'data'), transactions)
     saveToStorage(userStorageKey(user.uid, 'bills'), bills)
-    saveToStorage(userStorageKey(user.uid, 'dark'), darkMode)
     saveToStorage(userStorageKey(user.uid, 'filters'), filters)
     saveToStorage(userStorageKey(user.uid, 'settings'), settings)
-  }, [user, authLoading, isLoading, transactions, bills, darkMode, filters, settings])
+  }, [user, authLoading, isLoading, transactions, bills, filters, settings])
 
   useEffect(() => {
+    try {
+      localStorage.setItem('etracker_theme_dark', String(darkMode))
+    } catch (e) {
+      console.error(e)
+    }
     document.body.classList.toggle('dark', darkMode)
   }, [darkMode])
 

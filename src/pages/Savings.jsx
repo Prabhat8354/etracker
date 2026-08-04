@@ -152,7 +152,7 @@ function Savings() {
         <div className="absolute -top-16 -right-16 h-36 w-36 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
         <div className="flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-650 dark:text-indigo-400">Savings Target</p>
+          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-600 dark:text-indigo-400">Savings Target</p>
         </div>
         <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-800 dark:text-white leading-tight">
           Savings & Commitments
@@ -218,7 +218,7 @@ function Savings() {
                 </div>
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Remaining to Target</p>
-                  <p className="text-xl font-extrabold text-slate-850 dark:text-slate-350 mt-0.5">{formatCurrency(remainingSavings, currency)}</p>
+                  <p className="text-xl font-extrabold text-slate-800 dark:text-slate-300 mt-0.5">{formatCurrency(remainingSavings, currency)}</p>
                 </div>
               </div>
             </div>
@@ -226,7 +226,7 @@ function Savings() {
 
           {/* Linear Progress bar */}
           <div className="mt-8 border-t border-slate-200/20 pt-6 dark:border-white/[0.02]">
-            <div className="flex justify-between text-xs font-semibold text-slate-450 dark:text-slate-550 mb-2">
+            <div className="flex justify-between text-xs font-semibold text-slate-400 dark:text-slate-500 mb-2">
               <span>Goal limit: {formatCurrency(savingsGoal, currency)}</span>
               <span>{savingsProgress}% Met</span>
             </div>
@@ -236,7 +236,7 @@ function Savings() {
                 style={{ width: `${savingsProgress}%` }}
               />
             </div>
-            <p className="mt-3 text-[10px] font-semibold text-slate-400 dark:text-slate-550">
+            <p className="mt-3 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
               *Net savings calculates your total inflows minus outflows specifically within this target duration.
             </p>
           </div>
@@ -255,7 +255,7 @@ function Savings() {
             
             {/* Value Editor */}
             <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-4.5 dark:border-white/[0.02] dark:bg-slate-900/10 space-y-2">
-              <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">
+              <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 <Target className="h-4 w-4 text-indigo-500" />
                 Target Value
               </label>
@@ -271,7 +271,7 @@ function Savings() {
 
             {/* Duration selector */}
             <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-4.5 dark:border-white/[0.02] dark:bg-slate-900/10 space-y-2">
-              <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">
+              <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 <Clock className="h-4 w-4 text-purple-500" />
                 Goal Duration Period
               </label>
@@ -304,7 +304,7 @@ function Savings() {
           <button
             type="button"
             onClick={handleCreateBill}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-md hover:bg-slate-800 dark:bg-indigo-650 dark:hover:bg-indigo-600 transition"
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-md hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 transition"
           >
             <Plus className="h-4 w-4" />
             Add Commitment
@@ -328,7 +328,7 @@ function Savings() {
                         {statusConfig.label}
                       </span>
                       <h4 className="mt-3 text-sm font-extrabold text-slate-800 dark:text-white truncate">{bill.name}</h4>
-                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-550 mt-1 flex items-center gap-1">
+                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         Due {bill.date} • {bill.repeat}
                       </p>
@@ -346,7 +346,7 @@ function Savings() {
                       className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition ${
                         bill.status === 'paid'
                           ? 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800'
-                          : 'bg-indigo-500 text-white shadow-sm shadow-indigo-500/10 hover:bg-indigo-650'
+                          : 'bg-indigo-500 text-white shadow-sm shadow-indigo-500/10 hover:bg-indigo-600'
                       }`}
                     >
                       <CheckCircle className="h-3.5 w-3.5" />
@@ -357,7 +357,7 @@ function Savings() {
                       <button
                         type="button"
                         onClick={() => handleEditBill(bill)}
-                        className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-lg border border-slate-200/40 bg-white/80 text-slate-500 hover:text-slate-800 dark:border-slate-850 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-white"
+                        className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-lg border border-slate-200/40 bg-white/80 text-slate-500 hover:text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-white"
                         aria-label="Edit commitment"
                       >
                         <Edit2 className="h-3.5 w-3.5" />
@@ -401,7 +401,7 @@ function Savings() {
             </span>
             <div>
               <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Completed Goals</p>
-              <p className="text-xl font-black text-slate-850 dark:text-white mt-0.5">{goalMetrics.completed}</p>
+              <p className="text-xl font-black text-slate-800 dark:text-white mt-0.5">{goalMetrics.completed}</p>
             </div>
           </div>
 
@@ -411,7 +411,7 @@ function Savings() {
             </span>
             <div>
               <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Missed Goals</p>
-              <p className="text-xl font-black text-slate-855 dark:text-white mt-0.5">{goalMetrics.missed}</p>
+              <p className="text-xl font-black text-slate-800 dark:text-white mt-0.5">{goalMetrics.missed}</p>
             </div>
           </div>
 
@@ -421,7 +421,7 @@ function Savings() {
             </span>
             <div>
               <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Avg Target Met Rate</p>
-              <p className="text-xl font-black text-slate-850 dark:text-white mt-0.5">{goalMetrics.completionRate}%</p>
+              <p className="text-xl font-black text-slate-800 dark:text-white mt-0.5">{goalMetrics.completionRate}%</p>
             </div>
           </div>
         </div>
@@ -451,7 +451,7 @@ function Savings() {
                       </p>
                     </div>
                     <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg ${
-                      item.completed ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-650 dark:text-rose-455'
+                      item.completed ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
                     }`}>
                       {item.completed ? 'Goal Met' : 'Missed'}
                     </span>
@@ -460,7 +460,7 @@ function Savings() {
               </div>
             ))
           ) : (
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-550 ml-2">Timeline history will populate as months close.</p>
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 ml-2">Timeline history will populate as months close.</p>
           )}
         </div>
       </section>

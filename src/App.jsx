@@ -189,7 +189,7 @@ function AppLayout({ mobileOpen, setMobileOpen }) {
             to={link.path}
             className={({ isActive }) =>
               `flex flex-col items-center gap-1 text-[9px] font-bold uppercase tracking-wider transition ${
-                isActive ? 'text-indigo-500 font-extrabold' : 'text-slate-400 dark:text-slate-500 hover:text-slate-650'
+                isActive ? 'text-indigo-500 font-extrabold' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400'
               }`
             }
           >

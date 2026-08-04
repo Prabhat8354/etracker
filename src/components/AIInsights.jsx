@@ -132,11 +132,11 @@ function AIInsights() {
               {spendingTrend.positive ? <TrendingDown className="h-4.5 w-4.5" /> : <TrendingUp className="h-4.5 w-4.5" />}
             </span>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-550">Spending Trend</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Spending Trend</p>
               <h4 className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{spendingTrend.label}</h4>
             </div>
           </div>
-          <p className="mt-4 text-[11px] font-semibold text-slate-450 dark:text-slate-500">{spendingTrend.details}</p>
+          <p className="mt-4 text-[11px] font-semibold text-slate-400 dark:text-slate-500">{spendingTrend.details}</p>
         </motion.div>
 
         {/* Card 2: Highest Spending Category */}
@@ -149,11 +149,11 @@ function AIInsights() {
               <Lightbulb className="h-4.5 w-4.5" />
             </span>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-550">Category Alert</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Category Alert</p>
               <h4 className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">Highest Outflow: {topCategory}</h4>
             </div>
           </div>
-          <p className="mt-4 text-[11px] font-semibold text-slate-455 dark:text-slate-500">
+          <p className="mt-4 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
             {topCategory !== 'None' 
               ? `Spending in ${topCategory} represents the largest portion of current expenses.`
               : 'Add expense logs to review largest category distributions.'}
@@ -170,11 +170,11 @@ function AIInsights() {
               <Coins className="h-4.5 w-4.5" />
             </span>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-550">Dining Optimizations</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Dining Optimizations</p>
               <h4 className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">Save {formatCurrency(diningOptimization.savings, currency)}</h4>
             </div>
           </div>
-          <p className="mt-4 text-[11px] font-semibold text-slate-450 dark:text-slate-500">
+          <p className="mt-4 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
             {diningOptimization.total > 0
               ? `You can save ${formatCurrency(diningOptimization.savings, currency)} next month by reducing dining expenses by 15%.`
               : 'Record dining/groceries logs in the category "Food" to calculate savings suggestions.'}
@@ -191,11 +191,11 @@ function AIInsights() {
               <Target className="h-4.5 w-4.5" />
             </span>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-555">Goal Proximity</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Goal Proximity</p>
               <h4 className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{goalProximity.msg}</h4>
             </div>
           </div>
-          <p className="mt-4 text-[11px] font-semibold text-slate-450 dark:text-slate-500">{goalProximity.action}</p>
+          <p className="mt-4 text-[11px] font-semibold text-slate-400 dark:text-slate-500">{goalProximity.action}</p>
         </motion.div>
 
         {/* Card 5: Savings Streak */}
@@ -208,11 +208,11 @@ function AIInsights() {
               <Flame className="h-4.5 w-4.5" />
             </span>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-550">Savings Streak</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Savings Streak</p>
               <h4 className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{savingsStreak} Month Streak</h4>
             </div>
           </div>
-          <p className="mt-4 text-[11px] font-semibold text-slate-450 dark:text-slate-500">You maintained positive net savings for {savingsStreak} consecutive month(s).</p>
+          <p className="mt-4 text-[11px] font-semibold text-slate-400 dark:text-slate-500">You maintained positive net savings for {savingsStreak} consecutive month(s).</p>
         </motion.div>
 
         {/* Card 6: Month-End Forecast */}
@@ -225,11 +225,11 @@ function AIInsights() {
               <LineChart className="h-4.5 w-4.5" />
             </span>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-555">Predictive Balance</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Predictive Balance</p>
               <h4 className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{formatCurrency(predictedBalance, currency)}</h4>
             </div>
           </div>
-          <p className="mt-4 text-[11px] font-semibold text-slate-450 dark:text-slate-500">Estimated remaining wallet balance at the end of the current month cycle.</p>
+          <p className="mt-4 text-[11px] font-semibold text-slate-400 dark:text-slate-500">Estimated remaining wallet balance at the end of the current month cycle.</p>
         </motion.div>
 
       </div>

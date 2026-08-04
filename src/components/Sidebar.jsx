@@ -104,7 +104,7 @@ function SidebarContent({ collapsed, toggleCollapse, mobileMode, setMobileOpen }
                 transition={{ duration: 0.15 }}
                 className="whitespace-nowrap"
               >
-                <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-550 dark:text-indigo-400">eTracker</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-600 dark:text-indigo-400">eTracker</p>
                 <h1 className="text-sm font-extrabold tracking-tight text-slate-800 dark:text-white leading-none">Studio</h1>
               </motion.div>
             )}
@@ -190,14 +190,14 @@ function SidebarContent({ collapsed, toggleCollapse, mobileMode, setMobileOpen }
             {user?.photoURL ? (
               <img src={user.photoURL} alt={profileName} className="h-8 w-8 rounded-lg object-cover border border-slate-200/20 dark:border-white/[0.02] shrink-0" />
             ) : (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-650 text-xs font-extrabold text-white shadow-md">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-extrabold text-white shadow-md">
                 {profileName.charAt(0).toUpperCase()}
               </div>
             )}
             {!collapsed && (
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-850 dark:text-white truncate">{profileName}</p>
-                <p className="text-[9px] font-bold text-slate-400 dark:text-slate-550 truncate">{user?.email}</p>
+                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{profileName}</p>
+                <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 truncate">{user?.email}</p>
               </div>
             )}
           </div>
@@ -208,7 +208,7 @@ function SidebarContent({ collapsed, toggleCollapse, mobileMode, setMobileOpen }
           <button
             type="button"
             onClick={toggleCollapse}
-            className="w-full flex items-center justify-center py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.02] text-slate-400 hover:text-slate-650 dark:text-slate-500 dark:hover:text-slate-300 transition duration-150"
+            className="w-full flex items-center justify-center py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.02] text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition duration-150"
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"><ChevronLeft className="h-3.5 w-3.5" /> Collapse</div>}
           </button>

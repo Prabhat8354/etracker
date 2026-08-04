@@ -11,7 +11,7 @@ function SearchBar({ value, onChange }) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Search logs, categories, notes..."
-        className="w-full rounded-xl border border-slate-200/50 bg-slate-50/50 py-2.5 pl-10 pr-12 text-xs font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-white/[0.04] dark:bg-slate-900/30 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:border-indigo-400 dark:focus:bg-slate-950 dark:focus:ring-indigo-650/10"
+        className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 py-2.5 pl-10 pr-12 text-xs font-semibold text-slate-900 dark:text-white outline-none transition placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/10"
       />
       <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
         <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-bold text-slate-400 dark:border-white/[0.06] dark:bg-slate-900/60 dark:text-slate-500">

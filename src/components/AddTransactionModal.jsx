@@ -68,7 +68,7 @@ function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initia
           onClick={() => setModalOpen(true)}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-650 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-105"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-105"
         >
           <Plus className="h-4.5 w-4.5" />
           <span>{buttonLabel}</span>
@@ -97,17 +97,17 @@ function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initia
             >
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-extrabold tracking-tight text-slate-850 dark:text-white">
+                  <h2 className="text-xl font-extrabold tracking-tight text-slate-800 dark:text-white">
                     {isEditMode ? 'Edit Transaction' : 'New Transaction'}
                   </h2>
-                  <p className="mt-1 text-xs font-semibold text-slate-450 dark:text-slate-500">
+                  <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
                     Enter transaction values and records securely.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100/50 text-slate-450 transition hover:bg-slate-100 hover:text-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100/50 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                 >
                   <X className="h-4.5 w-4.5" />
                 </button>
@@ -115,29 +115,35 @@ function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initia
 
               <form onSubmit={handleSubmit} className="mt-7 space-y-5">
                 
-                {/* Title Input with Floating Label */}
-                <div className="relative">
+                {/* Title Input with Static Label */}
+                <div className="space-y-1.5 text-left">
+                  <label
+                    htmlFor="tx-title"
+                    className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                  >
+                    Title / Item description
+                  </label>
                   <input
                     type="text"
                     id="tx-title"
                     value={transaction.title}
                     onChange={(event) => setTransaction({ ...transaction, title: event.target.value })}
-                    className="peer w-full rounded-2xl border border-slate-200/60 bg-slate-50/50 px-4 pt-6 pb-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-white/[0.04] dark:bg-slate-900/30 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-950 placeholder-transparent"
-                    placeholder="Title"
+                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    placeholder="e.g. Adobe Subscription"
                     required
                   />
-                  <label
-                    htmlFor="tx-title"
-                    className="absolute left-4 top-2 text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-xs peer-placeholder-shown:font-semibold peer-focus:top-2 peer-focus:text-[9px] peer-focus:font-black peer-focus:text-indigo-500 pointer-events-none"
-                  >
-                    Title / Item description
-                  </label>
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   
-                  {/* Amount Input with Floating Label */}
-                  <div className="relative">
+                  {/* Amount Input with Static Label */}
+                  <div className="space-y-1.5 text-left">
+                    <label
+                      htmlFor="tx-amount"
+                      className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      Amount ({currency})
+                    </label>
                     <input
                       type="number"
                       id="tx-amount"
@@ -145,104 +151,101 @@ function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initia
                       onChange={(event) => setTransaction({ ...transaction, amount: event.target.value })}
                       min="0"
                       step="0.01"
-                      className="peer w-full rounded-2xl border border-slate-200/60 bg-slate-50/50 px-4 pt-6 pb-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-white/[0.04] dark:bg-slate-900/30 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-950 placeholder-transparent"
-                      placeholder="Amount"
+                      className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      placeholder="0.00"
                       required
                     />
-                    <label
-                      htmlFor="tx-amount"
-                      className="absolute left-4 top-2 text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-xs peer-placeholder-shown:font-semibold peer-focus:top-2 peer-focus:text-[9px] peer-focus:font-black peer-focus:text-indigo-500 pointer-events-none"
-                    >
-                      Amount ({currency})
-                    </label>
                   </div>
 
-                  {/* Date Input with Floating Label */}
-                  <div className="relative">
+                  {/* Date Input with Static Label */}
+                  <div className="space-y-1.5 text-left">
+                    <label
+                      htmlFor="tx-date"
+                      className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      Calendar Date
+                    </label>
                     <input
                       type="date"
                       id="tx-date"
                       value={transaction.date}
                       onChange={(event) => setTransaction({ ...transaction, date: event.target.value })}
-                      className="peer w-full rounded-2xl border border-slate-200/60 bg-slate-50/50 px-4 pt-6 pb-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-white/[0.04] dark:bg-slate-900/30 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-950 placeholder-transparent"
-                      placeholder="Date"
+                      className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                       required
                     />
-                    <label
-                      htmlFor="tx-date"
-                      className="absolute left-4 top-2 text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-xs peer-placeholder-shown:font-semibold peer-focus:top-2 peer-focus:text-[9px] peer-focus:font-black peer-focus:text-indigo-500 pointer-events-none"
-                    >
-                      Calendar Date
-                    </label>
                   </div>
 
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   
-                  {/* Category Dropdown */}
-                  <div className="relative">
-                    <select
-                      id="tx-category"
-                      value={transaction.category}
-                      onChange={(event) => setTransaction({ ...transaction, category: event.target.value })}
-                      className="peer w-full rounded-2xl border border-slate-200/60 bg-slate-50/50 px-4 pt-6 pb-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-white/[0.04] dark:bg-slate-900/30 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-950 appearance-none"
-                    >
-                      {sampleCategories.map((category) => (
-                        <option key={category} value={category}>{category}</option>
-                      ))}
-                    </select>
+                  {/* Category Dropdown with Static Label */}
+                  <div className="space-y-1.5 text-left">
                     <label
                       htmlFor="tx-category"
-                      className="absolute left-4 top-2 text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 pointer-events-none"
+                      className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
                     >
                       Category
                     </label>
-                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
-                      <Tag className="h-3.5 w-3.5" />
+                    <div className="relative">
+                      <select
+                        id="tx-category"
+                        value={transaction.category}
+                        onChange={(event) => setTransaction({ ...transaction, category: event.target.value })}
+                        className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 appearance-none"
+                      >
+                        {sampleCategories.map((category) => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                        <Tag className="h-3.5 w-3.5" />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Type Dropdown */}
-                  <div className="relative">
-                    <select
-                      id="tx-type"
-                      value={transaction.type}
-                      onChange={(event) => setTransaction({ ...transaction, type: event.target.value })}
-                      className="peer w-full rounded-2xl border border-slate-200/60 bg-slate-50/50 px-4 pt-6 pb-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-white/[0.04] dark:bg-slate-900/30 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-950 appearance-none"
-                    >
-                      <option value="income">Income</option>
-                      <option value="expense">Expense</option>
-                    </select>
+                  {/* Type Dropdown with Static Label */}
+                  <div className="space-y-1.5 text-left">
                     <label
                       htmlFor="tx-type"
-                      className="absolute left-4 top-2 text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 pointer-events-none"
+                      className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
                     >
                       Type flow
                     </label>
-                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
-                      <FileText className="h-3.5 w-3.5" />
+                    <div className="relative">
+                      <select
+                        id="tx-type"
+                        value={transaction.type}
+                        onChange={(event) => setTransaction({ ...transaction, type: event.target.value })}
+                        className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 appearance-none"
+                      >
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                        <FileText className="h-3.5 w-3.5" />
+                      </div>
                     </div>
                   </div>
 
                 </div>
 
-                {/* Notes Input with Floating Label */}
-                <div className="relative">
+                {/* Notes Input with Static Label */}
+                <div className="space-y-1.5 text-left">
+                  <label
+                    htmlFor="tx-notes"
+                    className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                  >
+                    Notes / Description
+                  </label>
                   <textarea
                     id="tx-notes"
                     value={transaction.notes}
                     onChange={(event) => setTransaction({ ...transaction, notes: event.target.value })}
                     rows={3}
-                    className="peer w-full rounded-2xl border border-slate-200/60 bg-slate-50/50 px-4 pt-6 pb-2 text-sm font-semibold text-slate-850 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 dark:border-white/[0.04] dark:bg-slate-900/30 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-950 placeholder-transparent"
-                    placeholder="Notes"
+                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    placeholder="Enter transaction notes..."
                   />
-                  <label
-                    htmlFor="tx-notes"
-                    className="absolute left-4 top-2 text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-xs peer-placeholder-shown:font-semibold peer-focus:top-2 peer-focus:text-[9px] peer-focus:font-black peer-focus:text-indigo-500 pointer-events-none"
-                  >
-                    Notes / Description
-                  </label>
                 </div>
 
                 {/* Action Buttons */}
@@ -250,13 +253,13 @@ function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initia
                   <button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="rounded-xl border border-slate-200/50 bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 transition hover:bg-slate-50 hover:text-slate-850 dark:border-white/[0.04] dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                    className="rounded-xl border border-slate-200/50 bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 dark:border-white/[0.04] dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-650 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-105"
+                    className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-105"
                   >
                     {isEditMode ? 'Update Entry' : 'Create Entry'}
                   </button>
