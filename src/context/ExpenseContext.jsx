@@ -5,6 +5,7 @@ import { calculateSummary, generateGreeting, loadFromStorage, saveToStorage, par
 import { useAuthContext } from './AuthContext.jsx'
 import { db } from '../firebase/firebaseConfig.js'
 import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, getDocs } from 'firebase/firestore'
+import { convertCurrency as _convertCurrency } from '../utils/currency.js'
 
 const ExpenseContext = createContext(null)
 
@@ -153,7 +154,7 @@ export function ExpenseProvider({ children }) {
     return () => unsubscribe()
   }, [authLoading, user])
 
-  // Set up local settings, filters, and bills from localStorage
+  // Set up local settings, filters, and bills from localStorage & Firestore settings sync
   useEffect(() => {
     if (authLoading) return
     if (!user) {
@@ -173,7 +174,6 @@ export function ExpenseProvider({ children }) {
 
     const storedBills = loadFromStorage(userStorageKey(user.uid, 'bills'))
     const storedFilters = loadFromStorage(userStorageKey(user.uid, 'filters'))
-    const storedSettings = loadFromStorage(userStorageKey(user.uid, 'settings'))
 
     setBills(storedBills ?? [
       { id: '1', name: 'Adobe Creative Suite', amount: 52.99, date: '2026-08-12', category: 'Entertainment', repeat: 'monthly', status: 'pending' },
@@ -181,23 +181,63 @@ export function ExpenseProvider({ children }) {
       { id: '3', name: 'AWS Cloud server', amount: 145.50, date: '2026-08-24', category: 'Software', repeat: 'monthly', status: 'pending' }
     ])
     setFilters(storedFilters ?? { type: 'all', category: 'all', sort: 'newest', query: '', range: 'all' })
-    setSettings(storedSettings ?? {
-      currency: 'USD',
-      monthlyBudget: 3000,
-      savingsGoal: 500,
-      savingsGoalPeriod: 'monthly',
-      language: 'en',
-      animationSpeed: 'normal',
-      notificationsEnabled: true
+
+    if (!db) {
+      const storedSettings = loadFromStorage(userStorageKey(user.uid, 'settings'))
+      if (storedSettings) setSettings(storedSettings)
+      return
+    }
+
+    // Subscribe to settings in Firestore
+    const docRef = doc(db, 'users', user.uid, 'settings', 'config')
+    const unsubscribe = onSnapshot(docRef, async (docSnap) => {
+      if (docSnap.exists()) {
+        const remoteSettings = docSnap.data()
+        setSettings((prev) => {
+          const keys = Object.keys(remoteSettings)
+          const isDifferent = keys.some(key => prev[key] !== remoteSettings[key])
+          return isDifferent ? remoteSettings : prev
+        })
+      } else {
+        // If not in Firestore yet, read localStorage settings or defaults, then push to Firestore
+        const storedSettings = loadFromStorage(userStorageKey(user.uid, 'settings')) || {
+          currency: 'USD',
+          monthlyBudget: 3000,
+          savingsGoal: 500,
+          savingsGoalPeriod: 'monthly',
+          language: 'en',
+          animationSpeed: 'normal',
+          notificationsEnabled: true
+        }
+        try {
+          await setDoc(docRef, storedSettings)
+          setSettings(storedSettings)
+        } catch (err) {
+          console.error("Failed to write default settings to Firestore:", err)
+        }
+      }
+    }, (error) => {
+      console.error("Firestore settings listener failed:", error)
     })
+
+    return () => unsubscribe()
   }, [authLoading, user])
 
-  // Save changes to localStorage (excluding transactions)
+  // Save changes to localStorage and Firestore settings
   useEffect(() => {
     if (!user || authLoading || isLoading) return
     saveToStorage(userStorageKey(user.uid, 'bills'), bills)
     saveToStorage(userStorageKey(user.uid, 'filters'), filters)
-    saveToStorage(userStorageKey(user.uid, 'settings'), settings)
+
+    const saveSettingsToFirestore = async () => {
+      try {
+        await setDoc(doc(db, 'users', user.uid, 'settings', 'config'), settings)
+        saveToStorage(userStorageKey(user.uid, 'settings'), settings)
+      } catch (err) {
+        console.error("Failed to save settings to Firestore:", err)
+      }
+    }
+    saveSettingsToFirestore()
   }, [user, authLoading, isLoading, bills, filters, settings])
 
   useEffect(() => {
@@ -211,11 +251,7 @@ export function ExpenseProvider({ children }) {
 
   // Conversion helpers
   const convertCurrency = (amount, fromCurrency, toCurrency) => {
-    if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) return Number(amount)
-    const fromRate = rates[fromCurrency] || 1
-    const toRate = rates[toCurrency] || 1
-    const amountInUSD = Number(amount) / fromRate
-    return amountInUSD * toRate
+    return _convertCurrency(amount, fromCurrency, toCurrency, rates)
   }
 
   const convertAmount = (amountInUSD) => {
