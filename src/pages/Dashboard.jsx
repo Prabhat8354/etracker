@@ -8,7 +8,7 @@ import QuickStats from '../components/QuickStats.jsx'
 import RecentTransactions from '../components/RecentTransactions.jsx'
 import AddTransactionModal from '../components/AddTransactionModal.jsx'
 import EmptyState from '../components/EmptyState.jsx'
-import { formatDate } from '../utils/helpers.jsx'
+import { formatDate, formatCurrency } from '../utils/helpers.jsx'
 
 function Dashboard() {
   const { user } = useAuthContext()
@@ -204,7 +204,7 @@ function Dashboard() {
               <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-4.5 dark:border-white/[0.02] dark:bg-slate-900/10">
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
                   <span>Monthly budget limit</span>
-                  <span className="font-bold text-slate-800 dark:text-white">${monthlyBudget.toLocaleString()}</span>
+                  <span className="font-bold text-slate-800 dark:text-white">{formatCurrency(monthlyBudget, settings.currency)}</span>
                 </div>
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/20 dark:border-white/[0.02]">
                   <div
@@ -374,7 +374,7 @@ function Dashboard() {
                   <p className={`mt-3.5 text-base font-black tracking-tight ${
                     item.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
                   }`}>
-                    {item.type === 'income' ? '+' : '-'}${Number(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount, settings.currency)}
                   </p>
                 </motion.div>
               ))

@@ -57,6 +57,10 @@ export function AuthProvider({ children }) {
       const result = await createUserWithEmailAndPassword(auth, email, password)
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { displayName: name })
+        setUser((prev) => ({
+          ...prev,
+          displayName: name,
+        }))
       }
       toast.success('Account created successfully')
       setAuthError(null)

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import AddBillModal from '../components/AddBillModal.jsx'
-import { formatCurrency } from '../utils/helpers.jsx'
+import { formatCurrency, parseLocalDate } from '../utils/helpers.jsx'
 
 function Savings() {
   const { transactions, summary, settings, setSettings, rates, bills, deleteBill, toggleBillStatus } = useExpenseContext()
@@ -32,7 +32,7 @@ function Savings() {
   const currentPeriodTransactions = useMemo(() => {
     const now = new Date()
     return transactions.filter((t) => {
-      const tDate = new Date(t.date)
+      const tDate = parseLocalDate(t.date)
       if (period === 'daily') {
         return tDate.toDateString() === now.toDateString()
       }
@@ -68,7 +68,7 @@ function Savings() {
     const historyMap = {}
 
     transactions.forEach(t => {
-      const date = new Date(t.date)
+      const date = parseLocalDate(t.date)
       const key = `${months[date.getMonth()]} ${date.getFullYear()}`
       if (!historyMap[key]) {
         historyMap[key] = { income: 0, expense: 0, year: date.getFullYear(), monthIdx: date.getMonth() }

@@ -55,7 +55,19 @@ export const formatCurrency = (value, currency = 'USD') => {
   return `${symbol}${formatted}`
 }
 
-export const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+export const parseLocalDate = (dateString) => {
+  if (!dateString) return new Date()
+  if (typeof dateString === 'string' && dateString.includes('-')) {
+    const parts = dateString.split('-')
+    if (parts.length === 3) {
+      const [year, month, day] = parts.map(Number)
+      return new Date(year, month - 1, day)
+    }
+  }
+  return new Date(dateString)
+}
+
+export const formatDate = (dateString) => parseLocalDate(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
 export const generateGreeting = () => {
   const hour = new Date().getHours()

@@ -238,7 +238,7 @@ function AddBillModal({ open, onOpenChange, initialBill }) {
                 </button>
                 <button
                   type="submit"
-                  className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-655 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-105"
+                  className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-105"
                 >
                   {isEditMode ? 'Save Bill' : 'Add Bill'}
                 </button>

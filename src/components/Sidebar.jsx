@@ -114,7 +114,7 @@ function SidebarContent({ collapsed, toggleCollapse, mobileMode, setMobileOpen }
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-50 text-slate-655 transition hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-50 text-slate-600 transition hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
             >
               <X className="h-4 w-4" />
             </button>

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { sampleCategories } from '../data/sampleData.jsx'
-import { calculateSummary, generateGreeting, loadFromStorage, saveToStorage } from '../utils/helpers.jsx'
+import { calculateSummary, generateGreeting, loadFromStorage, saveToStorage, parseLocalDate } from '../utils/helpers.jsx'
 import { useAuthContext } from './AuthContext.jsx'
 
 const ExpenseContext = createContext(null)
@@ -167,7 +167,7 @@ export function ExpenseProvider({ children }) {
         if (filters.category !== 'all' && item.category !== filters.category) return false
         if (filters.range !== 'all') {
           const now = new Date()
-          const itemDate = new Date(item.date)
+          const itemDate = parseLocalDate(item.date)
           if (filters.range === 'last30') {
             const threshold = new Date(now.setDate(now.getDate() - 30))
             if (itemDate < threshold) return false
@@ -178,17 +178,17 @@ export function ExpenseProvider({ children }) {
           }
         }
         if (!normalizedQuery) return true
-        return [item.title, item.category, item.notes].some((value) => value.toLowerCase().includes(normalizedQuery))
+        return [item.title, item.category, item.notes].some((value) => (value || '').toLowerCase().includes(normalizedQuery))
       })
       .map((item) => ({
         ...item,
         amount: item.amount * rate
       }))
       .sort((a, b) => {
-        if (filters.sort === 'oldest') return new Date(a.date) - new Date(b.date)
+        if (filters.sort === 'oldest') return parseLocalDate(a.date) - parseLocalDate(b.date)
         if (filters.sort === 'highest') return b.amount - a.amount
         if (filters.sort === 'lowest') return a.amount - b.amount
-        return new Date(b.date) - new Date(a.date)
+        return parseLocalDate(b.date) - parseLocalDate(a.date)
       })
   }, [transactions, filters, rates, settings.currency])
 

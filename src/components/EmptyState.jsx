@@ -45,7 +45,7 @@ function EmptyState({ variant = 'generic', message, loading }) {
           </div>
           <div className="space-y-2.5">
             <div className="mx-auto h-4 w-40 rounded bg-slate-200 dark:bg-slate-800 animate-pulse" />
-            <div className="mx-auto h-3 w-56 rounded bg-slate-150 dark:bg-slate-800/80 animate-pulse" />
+            <div className="mx-auto h-3 w-56 rounded bg-slate-100 dark:bg-slate-800/80 animate-pulse" />
           </div>
         </div>
       ) : (

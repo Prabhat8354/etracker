@@ -21,6 +21,7 @@ import AnalyticsCard from "../components/AnalyticsCard.jsx";
 import AIInsights from "../components/AIInsights.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { Sparkles, Landmark, Calendar, Award, Zap } from "lucide-react";
+import { parseLocalDate } from "../utils/helpers.jsx";
 
 const colors = ['#6366f1', '#10b981', '#f43f5e', '#0ea5e9', '#f59e0b', '#8b5cf6', '#f97316']
 
@@ -66,7 +67,7 @@ function Analytics() {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     const values = months.map((month) => ({ month, expense: 0, income: 0 }))
     transactions.forEach((item) => {
-      const date = new Date(item.date)
+      const date = parseLocalDate(item.date)
       const month = months[date.getMonth()]
       const entry = values.find((value) => value.month === month)
       if (entry) {
@@ -87,7 +88,7 @@ function Analytics() {
     })
 
     transactions.forEach(t => {
-      const month = months[new Date(t.date).getMonth()]
+      const month = months[parseLocalDate(t.date).getMonth()]
       if (t.type === 'income') {
         monthlyNet[month] += t.amount
       } else {
@@ -102,7 +103,7 @@ function Analytics() {
     }))
 
     const highest = [...monthlyNetConverted].sort((a, b) => b.savings - a.savings)[0]
-    const activeMonths = transactions.length > 0 ? new Set(transactions.map(t => new Date(t.date).getMonth())).size : 1
+    const activeMonths = transactions.length > 0 ? new Set(transactions.map(t => parseLocalDate(t.date).getMonth())).size : 1
     
     const totalSavings = summary.savings
     const avgSavings = totalSavings / activeMonths

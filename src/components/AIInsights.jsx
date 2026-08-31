@@ -13,7 +13,7 @@ import {
   Lightbulb
 } from 'lucide-react'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
-import { formatCurrency } from '../utils/helpers.jsx'
+import { formatCurrency, parseLocalDate } from '../utils/helpers.jsx'
 
 function AIInsights() {
   const { transactions, summary, settings, rates } = useExpenseContext()
@@ -48,7 +48,7 @@ function AIInsights() {
   // 3. Dining out optimization suggestion
   const diningOptimization = useMemo(() => {
     const totalFoodUSD = transactions
-      .filter((t) => t.type === 'expense' && t.category.toLowerCase() === 'food')
+      .filter((t) => t.type === 'expense' && t.category.toLowerCase() === 'groceries')
       .reduce((sum, t) => sum + t.amount, 0)
     
     const totalFoodConverted = totalFoodUSD * rate
@@ -65,8 +65,8 @@ function AIInsights() {
     const monthlyNet = {}
     
     transactions.forEach(t => {
-      const date = new Date(t.date)
-      const key = `${date.getFullYear()}-${date.getMonth()}`
+      const date = parseLocalDate(t.date)
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       if (!monthlyNet[key]) monthlyNet[key] = 0
       if (t.type === 'income') {
         monthlyNet[key] += t.amount
