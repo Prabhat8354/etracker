@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
+import { getFirestore } from 'firebase/firestore'
 
 // Build the Firebase config from Vite environment variables.
 const firebaseConfig = {
@@ -25,6 +26,7 @@ const missingEnvVars = requiredEnvVars.filter((variable) => !import.meta.env[var
 
 let app = null
 let auth = null
+let db = null
 let firebaseError = null
 
 // Initialize Firebase only when the required configuration exists.
@@ -32,6 +34,7 @@ if (missingEnvVars.length === 0) {
   try {
     app = initializeApp(firebaseConfig)
     auth = getAuth(app)
+    db = getFirestore(app)
   } catch (error) {
     firebaseError = error instanceof Error ? error.message : 'Failed to initialize Firebase.'
   }
@@ -40,7 +43,7 @@ if (missingEnvVars.length === 0) {
 }
 
 // Export a simple flag so the app can show a graceful configuration screen.
-export const isFirebaseConfigured = Boolean(auth && !firebaseError && missingEnvVars.length === 0)
+export const isFirebaseConfigured = Boolean(auth && db && !firebaseError && missingEnvVars.length === 0)
 
 // Export the auth instance and error details for the rest of the app.
-export { auth, firebaseError, missingEnvVars }
+export { auth, db, firebaseError, missingEnvVars }

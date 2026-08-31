@@ -3,6 +3,8 @@ import toast from 'react-hot-toast'
 import { sampleCategories } from '../data/sampleData.jsx'
 import { calculateSummary, generateGreeting, loadFromStorage, saveToStorage, parseLocalDate } from '../utils/helpers.jsx'
 import { useAuthContext } from './AuthContext.jsx'
+import { db } from '../firebase/firebaseConfig.js'
+import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, getDocs } from 'firebase/firestore'
 
 const ExpenseContext = createContext(null)
 
@@ -86,10 +88,75 @@ export function ExpenseProvider({ children }) {
     fetchRates()
   }, [])
 
+  // Set up realtime Firestore synchronization for transactions with local storage migration
   useEffect(() => {
     if (authLoading) return
     if (!user) {
       setTransactions([])
+      return
+    }
+
+    if (!db) {
+      console.warn("Firestore database is not configured. Falling back to local storage.")
+      const storedData = loadFromStorage(userStorageKey(user.uid, 'data'))
+      setTransactions(storedData ?? [])
+      setIsLoading(false)
+      return
+    }
+
+    const localData = loadFromStorage(userStorageKey(user.uid, 'data')) || []
+
+    const q = collection(db, 'users', user.uid, 'transactions')
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const dbTxs = {}
+      snapshot.forEach((doc) => {
+        dbTxs[doc.id] = { id: doc.id, ...doc.data() }
+      })
+
+      // Perform one-time migration of local storage data to Firestore
+      if (localData.length > 0) {
+        let migratedAny = false
+        for (const localTx of localData) {
+          if (!dbTxs[localTx.id]) {
+            const migratedTx = {
+              title: localTx.title || 'Untitled',
+              amount: Number(localTx.amount) || 0,
+              currency: localTx.currency || 'USD',
+              category: localTx.category || 'Other',
+              notes: localTx.notes || '',
+              type: localTx.type || 'expense',
+              date: localTx.date || new Date().toISOString().slice(0, 10),
+              createdAt: localTx.createdAt || new Date().toISOString(),
+              updatedAt: localTx.updatedAt || new Date().toISOString()
+            }
+            try {
+              await setDoc(doc(db, 'users', user.uid, 'transactions', localTx.id), migratedTx)
+              dbTxs[localTx.id] = { id: localTx.id, ...migratedTx }
+              migratedAny = true
+            } catch (err) {
+              console.error("Migration failed for transaction:", localTx.id, err)
+            }
+          }
+        }
+        if (migratedAny) {
+          saveToStorage(userStorageKey(user.uid, 'data'), [])
+        }
+      }
+
+      setTransactions(Object.values(dbTxs))
+      setIsLoading(false)
+    }, (error) => {
+      console.error("Firestore transaction listener failed:", error)
+      setIsLoading(false)
+    })
+
+    return () => unsubscribe()
+  }, [authLoading, user])
+
+  // Set up local settings, filters, and bills from localStorage
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) {
       setBills([])
       setFilters({ type: 'all', category: 'all', sort: 'newest', query: '', range: 'all' })
       setSettings({
@@ -101,16 +168,13 @@ export function ExpenseProvider({ children }) {
         animationSpeed: 'normal',
         notificationsEnabled: true
       })
-      setIsLoading(false)
       return
     }
 
-    const storedData = loadFromStorage(userStorageKey(user.uid, 'data'))
     const storedBills = loadFromStorage(userStorageKey(user.uid, 'bills'))
     const storedFilters = loadFromStorage(userStorageKey(user.uid, 'filters'))
     const storedSettings = loadFromStorage(userStorageKey(user.uid, 'settings'))
 
-    setTransactions(storedData ?? [])
     setBills(storedBills ?? [
       { id: '1', name: 'Adobe Creative Suite', amount: 52.99, date: '2026-08-12', category: 'Entertainment', repeat: 'monthly', status: 'pending' },
       { id: '2', name: 'Vercel Pro Hosting', amount: 20.00, date: '2026-08-18', category: 'Software', repeat: 'monthly', status: 'pending' },
@@ -126,16 +190,15 @@ export function ExpenseProvider({ children }) {
       animationSpeed: 'normal',
       notificationsEnabled: true
     })
-    setIsLoading(false)
   }, [authLoading, user])
 
+  // Save changes to localStorage (excluding transactions)
   useEffect(() => {
     if (!user || authLoading || isLoading) return
-    saveToStorage(userStorageKey(user.uid, 'data'), transactions)
     saveToStorage(userStorageKey(user.uid, 'bills'), bills)
     saveToStorage(userStorageKey(user.uid, 'filters'), filters)
     saveToStorage(userStorageKey(user.uid, 'settings'), settings)
-  }, [user, authLoading, isLoading, transactions, bills, filters, settings])
+  }, [user, authLoading, isLoading, bills, filters, settings])
 
   useEffect(() => {
     try {
@@ -147,6 +210,14 @@ export function ExpenseProvider({ children }) {
   }, [darkMode])
 
   // Conversion helpers
+  const convertCurrency = (amount, fromCurrency, toCurrency) => {
+    if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) return Number(amount)
+    const fromRate = rates[fromCurrency] || 1
+    const toRate = rates[toCurrency] || 1
+    const amountInUSD = Number(amount) / fromRate
+    return amountInUSD * toRate
+  }
+
   const convertAmount = (amountInUSD) => {
     const rate = rates[settings.currency] || 1
     return amountInUSD * rate
@@ -160,7 +231,6 @@ export function ExpenseProvider({ children }) {
   // Filter and map transaction amounts to the preferred currency dynamically
   const filteredTransactions = useMemo(() => {
     const normalizedQuery = filters.query.trim().toLowerCase()
-    const rate = rates[settings.currency] || 1
     return transactions
       .filter((item) => {
         if (filters.type !== 'all' && item.type !== filters.type) return false
@@ -180,21 +250,19 @@ export function ExpenseProvider({ children }) {
         if (!normalizedQuery) return true
         return [item.title, item.category, item.notes].some((value) => (value || '').toLowerCase().includes(normalizedQuery))
       })
-      .map((item) => ({
-        ...item,
-        amount: item.amount * rate
-      }))
       .sort((a, b) => {
+        const valA = convertCurrency(a.amount, a.currency || 'USD', settings.currency)
+        const valB = convertCurrency(b.amount, b.currency || 'USD', settings.currency)
         if (filters.sort === 'oldest') return parseLocalDate(a.date) - parseLocalDate(b.date)
-        if (filters.sort === 'highest') return b.amount - a.amount
-        if (filters.sort === 'lowest') return a.amount - b.amount
+        if (filters.sort === 'highest') return valB - valA
+        if (filters.sort === 'lowest') return valA - valB
         return parseLocalDate(b.date) - parseLocalDate(a.date)
       })
   }, [transactions, filters, rates, settings.currency])
 
   // Converted summary details
   const summary = useMemo(() => {
-    const usdSummary = calculateSummary(transactions)
+    const usdSummary = calculateSummary(transactions, rates)
     const rate = rates[settings.currency] || 1
     return {
       income: usdSummary.income * rate,
@@ -209,26 +277,64 @@ export function ExpenseProvider({ children }) {
   const greeting = useMemo(() => generateGreeting(), [])
   const quote = useMemo(() => quotes[Math.floor(Math.random() * quotes.length)], [])
 
-  // Input transactions are assumed to be in the preferred currency. Convert to USD base before storage.
-  const addTransaction = (transaction) => {
-    const rate = rates[settings.currency] || 1
-    const usdAmount = Number(transaction.amount) / rate
-    const newTx = { ...transaction, amount: usdAmount }
-    setTransactions((prev) => [newTx, ...prev])
-    toast.success('Transaction added successfully')
+  const addTransaction = async (transaction) => {
+    if (!user) {
+      toast.error('You must be logged in to add transactions.')
+      return
+    }
+    const newTx = {
+      title: transaction.title || '',
+      amount: Number(transaction.amount) || 0,
+      currency: transaction.currency || settings.currency || 'USD',
+      category: transaction.category || 'Other',
+      notes: transaction.notes || '',
+      type: transaction.type || 'expense',
+      date: transaction.date || new Date().toISOString().slice(0, 10),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+    setTransactions((prev) => [{ id: transaction.id, ...newTx }, ...prev])
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'transactions', transaction.id), newTx)
+      toast.success('Transaction added successfully')
+    } catch (error) {
+      console.error('Firestore save failed:', error)
+      toast.error('Failed to save transaction')
+    }
   }
 
-  const updateTransaction = (updatedTransaction) => {
-    const rate = rates[settings.currency] || 1
-    const usdAmount = Number(updatedTransaction.amount) / rate
-    const newTx = { ...updatedTransaction, amount: usdAmount }
-    setTransactions((prev) => prev.map((item) => (item.id === updatedTransaction.id ? newTx : item)))
-    toast.success('Transaction updated successfully')
+  const updateTransaction = async (updatedTransaction) => {
+    if (!user) return
+    const newTx = {
+      title: updatedTransaction.title || '',
+      amount: Number(updatedTransaction.amount) || 0,
+      currency: updatedTransaction.currency || settings.currency || 'USD',
+      category: updatedTransaction.category || 'Other',
+      notes: updatedTransaction.notes || '',
+      type: updatedTransaction.type || 'expense',
+      date: updatedTransaction.date || new Date().toISOString().slice(0, 10),
+      updatedAt: new Date().toISOString()
+    }
+    setTransactions((prev) => prev.map((item) => (item.id === updatedTransaction.id ? { ...item, ...newTx } : item)))
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'transactions', updatedTransaction.id), newTx)
+      toast.success('Transaction updated successfully')
+    } catch (error) {
+      console.error('Firestore update failed:', error)
+      toast.error('Failed to update transaction')
+    }
   }
 
-  const deleteTransaction = (id) => {
+  const deleteTransaction = async (id) => {
+    if (!user) return
     setTransactions((prev) => prev.filter((item) => item.id !== id))
-    toast.success('Transaction deleted successfully')
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'transactions', id))
+      toast.success('Transaction deleted successfully')
+    } catch (error) {
+      console.error('Firestore delete failed:', error)
+      toast.error('Failed to delete transaction')
+    }
   }
 
   // Bills Management Actions
@@ -258,7 +364,20 @@ export function ExpenseProvider({ children }) {
     }))
   }
 
-  const resetData = () => {
+  const resetData = async () => {
+    if (user && db) {
+      try {
+        const q = query(collection(db, 'users', user.uid, 'transactions'))
+        const snapshot = await getDocs(q)
+        const batchPromises = []
+        snapshot.forEach((docSnap) => {
+          batchPromises.push(deleteDoc(doc(db, 'users', user.uid, 'transactions', docSnap.id)))
+        })
+        await Promise.all(batchPromises)
+      } catch (err) {
+        console.error("Failed to delete Firestore data during reset:", err)
+      }
+    }
     setTransactions([])
     setBills([])
     setFilters({ type: 'all', category: 'all', sort: 'newest', query: '', range: 'all' })
@@ -299,6 +418,7 @@ export function ExpenseProvider({ children }) {
         rates,
         convertAmount,
         convertToUSD,
+        convertCurrency,
         bills,
         setBills,
         addBill,

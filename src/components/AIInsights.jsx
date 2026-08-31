@@ -16,7 +16,7 @@ import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import { formatCurrency, parseLocalDate } from '../utils/helpers.jsx'
 
 function AIInsights() {
-  const { transactions, summary, settings, rates } = useExpenseContext()
+  const { transactions, summary, settings, rates, convertCurrency } = useExpenseContext()
   const currency = settings?.currency || 'USD'
   const rate = rates[currency] || 1
 
@@ -26,11 +26,12 @@ function AIInsights() {
     transactions
       .filter((item) => item.type === 'expense')
       .forEach((item) => {
-        totals[item.category] = (totals[item.category] || 0) + item.amount
+        const amt = convertCurrency(item.amount, item.currency || 'USD', settings.currency)
+        totals[item.category] = (totals[item.category] || 0) + amt
       })
     const sorted = Object.entries(totals).sort(([, a], [, b]) => b - a)
     return sorted[0]?.[0] || 'None'
-  }, [transactions])
+  }, [transactions, settings.currency, rates])
 
   // 2. Goal proximity details
   const goalProximity = useMemo(() => {
@@ -49,7 +50,10 @@ function AIInsights() {
   const diningOptimization = useMemo(() => {
     const totalFoodUSD = transactions
       .filter((t) => t.type === 'expense' && t.category.toLowerCase() === 'groceries')
-      .reduce((sum, t) => sum + t.amount, 0)
+      .reduce((sum, t) => {
+        const fromRate = rates[t.currency || 'USD'] || 1
+        return sum + (Number(t.amount) / fromRate)
+      }, 0)
     
     const totalFoodConverted = totalFoodUSD * rate
     const potentialSavings = totalFoodConverted * 0.15 // 15% reduction suggestion
@@ -57,7 +61,7 @@ function AIInsights() {
       total: totalFoodConverted,
       savings: potentialSavings
     }
-  }, [transactions, rate])
+  }, [transactions, rate, rates])
 
   // 4. Monthly Savings Streak
   const savingsStreak = useMemo(() => {
@@ -68,10 +72,12 @@ function AIInsights() {
       const date = parseLocalDate(t.date)
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       if (!monthlyNet[key]) monthlyNet[key] = 0
+      const fromRate = rates[t.currency || 'USD'] || 1
+      const usdAmount = Number(t.amount) / fromRate
       if (t.type === 'income') {
-        monthlyNet[key] += t.amount
+        monthlyNet[key] += usdAmount
       } else {
-        monthlyNet[key] -= t.amount
+        monthlyNet[key] -= usdAmount
       }
     })
 
@@ -85,7 +91,7 @@ function AIInsights() {
       }
     }
     return streakCount || 1
-  }, [transactions])
+  }, [transactions, rates])
 
   // 5. Predicted Month-End Balance forecast
   const predictedBalance = useMemo(() => {

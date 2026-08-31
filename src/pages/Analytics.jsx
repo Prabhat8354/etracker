@@ -50,18 +50,19 @@ const CustomTooltip = ({ active, payload, label, currency = 'USD' }) => {
 }
 
 function Analytics() {
-  const { transactions, summary, isLoading, settings, rates } = useExpenseContext()
+  const { transactions, summary, isLoading, settings, rates, convertCurrency } = useExpenseContext()
   const currency = settings?.currency || 'USD'
 
   const expenseByCategory = useMemo(() => {
     const totals = {}
     transactions.filter((item) => item.type === 'expense').forEach((item) => {
-      totals[item.category] = (totals[item.category] || 0) + item.amount
+      const amt = convertCurrency(item.amount, item.currency || 'USD', settings.currency)
+      totals[item.category] = (totals[item.category] || 0) + amt
     })
     return Object.entries(totals)
       .map(([category, value]) => ({ category, value }))
       .sort((a, b) => b.value - a.value)
-  }, [transactions])
+  }, [transactions, settings.currency, rates])
 
   const monthlyTotals = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -71,12 +72,13 @@ function Analytics() {
       const month = months[date.getMonth()]
       const entry = values.find((value) => value.month === month)
       if (entry) {
-        if (item.type === 'expense') entry.expense += item.amount
-        else entry.income += item.amount
+        const amt = convertCurrency(item.amount, item.currency || 'USD', settings.currency)
+        if (item.type === 'expense') entry.expense += amt
+        else entry.income += amt
       }
     })
     return values
-  }, [transactions])
+  }, [transactions, settings.currency, rates])
 
   // Savings Goal & Analytics calculations
   const savingsAnalytics = useMemo(() => {
@@ -89,17 +91,17 @@ function Analytics() {
 
     transactions.forEach(t => {
       const month = months[parseLocalDate(t.date).getMonth()]
+      const amt = convertCurrency(t.amount, t.currency || 'USD', settings.currency)
       if (t.type === 'income') {
-        monthlyNet[month] += t.amount
+        monthlyNet[month] += amt
       } else {
-        monthlyNet[month] -= t.amount
+        monthlyNet[month] -= amt
       }
     })
 
-    const rate = rates[settings.currency] || 1
     const monthlyNetConverted = Object.entries(monthlyNet).map(([month, val]) => ({
       month,
-      savings: Math.max(0, val) * rate
+      savings: Math.max(0, val)
     }))
 
     const highest = [...monthlyNetConverted].sort((a, b) => b.savings - a.savings)[0]

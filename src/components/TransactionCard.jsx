@@ -31,11 +31,12 @@ const categoryIcons = {
 }
 
 function TransactionCard({ transaction, compact }) {
-  const { deleteTransaction, settings } = useExpenseContext()
+  const { deleteTransaction, settings, convertCurrency } = useExpenseContext()
   const [showDelete, setShowDelete] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   
   const currency = settings?.currency || 'USD'
+  const txCurrency = transaction.currency || 'USD'
   const IconComponent = categoryIcons[transaction.category] || Tag
 
   return (
@@ -67,11 +68,18 @@ function TransactionCard({ transaction, compact }) {
           <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end">
             {/* Amount and Type Badge */}
             <div className="flex items-center gap-2.5 sm:flex-col sm:items-end">
-              <span className={`text-lg font-extrabold tracking-tight ${
-                transaction.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
-              }`}>
-                {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, currency)}
-              </span>
+              <div className="flex flex-col sm:items-end">
+                <span className={`text-lg font-extrabold tracking-tight ${
+                  transaction.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
+                }`}>
+                  {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, txCurrency)}
+                </span>
+                {txCurrency !== currency && (
+                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                    ≈ {formatCurrency(convertCurrency(transaction.amount, txCurrency, currency), currency)}
+                  </span>
+                )}
+              </div>
               <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg ${
                 transaction.type === 'income'
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'

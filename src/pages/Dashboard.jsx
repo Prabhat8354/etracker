@@ -12,7 +12,7 @@ import { formatDate, formatCurrency } from '../utils/helpers.jsx'
 
 function Dashboard() {
   const { user } = useAuthContext()
-  const { summary, filteredTransactions, isLoading, transactions, settings, rates, quote, bills } = useExpenseContext()
+  const { summary, filteredTransactions, isLoading, transactions, settings, rates, quote, bills, convertCurrency } = useExpenseContext()
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const profileName = user?.displayName || user?.email?.split('@')[0] || 'User'
@@ -25,22 +25,19 @@ function Dashboard() {
     const totals = transactions
       .filter((item) => item.type === 'expense')
       .reduce((acc, item) => {
-        acc[item.category] = (acc[item.category] || 0) + item.amount
+        const amt = convertCurrency(item.amount, item.currency || 'USD', settings.currency)
+        acc[item.category] = (acc[item.category] || 0) + amt
         return acc
       }, {})
 
     const sorted = Object.entries(totals).sort(([, a], [, b]) => b - a)
     return sorted[0]?.[0] || 'No expenses yet'
-  }, [transactions])
+  }, [transactions, settings.currency, rates])
 
   // Convert USD transactions to display in preferred currency
   const recentActivity = useMemo(() => {
-    const rate = rates[settings.currency] || 1
-    return transactions.slice(0, 5).map((item) => ({
-      ...item,
-      amount: item.amount * rate
-    }))
-  }, [transactions, rates, settings.currency])
+    return transactions.slice(0, 5)
+  }, [transactions])
 
   const monthlyBudget = settings.monthlyBudget ?? 3000
   const budgetProgress = Math.min(100, Math.round((summary.expense / monthlyBudget) * 100))
@@ -371,11 +368,18 @@ function Dashboard() {
                   </div>
                   <h4 className="mt-3.5 text-xs font-bold text-slate-800 dark:text-white truncate">{item.title}</h4>
                   <p className="mt-1 text-[9px] font-bold text-slate-400 dark:text-slate-400">{formatDate(item.date)}</p>
-                  <p className={`mt-3.5 text-base font-black tracking-tight ${
-                    item.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
-                  }`}>
-                    {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount, settings.currency)}
-                  </p>
+                  <div className="mt-3.5 flex flex-col">
+                    <p className={`text-base font-black tracking-tight ${
+                      item.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
+                    }`}>
+                      {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount, item.currency || 'USD')}
+                    </p>
+                    {item.currency && item.currency !== settings.currency && (
+                      <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                        ≈ {formatCurrency(convertCurrency(item.amount, item.currency, settings.currency), settings.currency)}
+                      </p>
+                    )}
+                  </div>
                 </motion.div>
               ))
             ) : (

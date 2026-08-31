@@ -19,7 +19,7 @@ import AddBillModal from '../components/AddBillModal.jsx'
 import { formatCurrency, parseLocalDate } from '../utils/helpers.jsx'
 
 function Savings() {
-  const { transactions, summary, settings, setSettings, rates, bills, deleteBill, toggleBillStatus } = useExpenseContext()
+  const { transactions, summary, settings, setSettings, rates, bills, deleteBill, toggleBillStatus, convertCurrency } = useExpenseContext()
   const [isBillModalOpen, setIsBillModalOpen] = useState(false)
   const [editingBill, setEditingBill] = useState(null)
 
@@ -48,9 +48,18 @@ function Savings() {
     })
   }, [transactions, period])
 
-  const rate = rates[settings.currency] || 1
-  const periodIncome = useMemo(() => currentPeriodTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0) * rate, [currentPeriodTransactions, rate])
-  const periodExpense = useMemo(() => currentPeriodTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0) * rate, [currentPeriodTransactions, rate])
+  const periodIncome = useMemo(() => 
+    currentPeriodTransactions
+      .filter(t => t.type === 'income')
+      .reduce((s, t) => s + convertCurrency(t.amount, t.currency || 'USD', settings.currency), 0),
+    [currentPeriodTransactions, settings.currency, rates]
+  )
+  const periodExpense = useMemo(() => 
+    currentPeriodTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((s, t) => s + convertCurrency(t.amount, t.currency || 'USD', settings.currency), 0),
+    [currentPeriodTransactions, settings.currency, rates]
+  )
   
   // Real-time Savings = Inflow - Outflow in the selected goal period
   const currentSavings = Math.max(0, periodIncome - periodExpense)
@@ -73,8 +82,10 @@ function Savings() {
       if (!historyMap[key]) {
         historyMap[key] = { income: 0, expense: 0, year: date.getFullYear(), monthIdx: date.getMonth() }
       }
-      if (t.type === 'income') historyMap[key].income += t.amount
-      else historyMap[key].expense += t.amount
+      const fromRate = rates[t.currency || 'USD'] || 1
+      const usdAmount = Number(t.amount) / fromRate
+      if (t.type === 'income') historyMap[key].income += usdAmount
+      else historyMap[key].expense += usdAmount
     })
 
     const now = new Date()

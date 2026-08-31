@@ -6,19 +6,20 @@ import { v4 as uuidv4 } from 'uuid'
 import toast from 'react-hot-toast'
 import { sampleCategories } from '../data/sampleData.jsx'
 
-const defaultTransaction = {
+const defaultTransaction = (defaultCurrency = 'USD') => ({
   title: '',
   amount: '',
+  currency: defaultCurrency,
   category: 'Salary',
   type: 'income',
   date: new Date().toISOString().slice(0, 10),
   notes: '',
-}
+})
 
 function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initialTransaction, triggerLabel }) {
   const { addTransaction, updateTransaction, settings } = useExpenseContext()
   const [localOpen, setLocalOpen] = useState(false)
-  const [transaction, setTransaction] = useState(initialTransaction ?? defaultTransaction)
+  const [transaction, setTransaction] = useState(() => initialTransaction ?? defaultTransaction(settings?.currency || 'USD'))
   
   const isControlled = openProp !== undefined && typeof onOpenChange === 'function'
   const modalOpen = isControlled ? openProp : localOpen
@@ -28,9 +29,9 @@ function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initia
 
   useEffect(() => {
     if (modalOpen) {
-      setTransaction(initialTransaction ?? defaultTransaction)
+      setTransaction(initialTransaction ?? defaultTransaction(settings?.currency || 'USD'))
     }
-  }, [modalOpen, initialTransaction])
+  }, [modalOpen, initialTransaction, settings?.currency])
 
   const setModalOpen = (value) => {
     if (isControlled) {
@@ -142,19 +143,37 @@ function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initia
                       htmlFor="tx-amount"
                       className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
                     >
-                      Amount ({currency})
+                      Amount
                     </label>
-                    <input
-                      type="number"
-                      id="tx-amount"
-                      value={transaction.amount}
-                      onChange={(event) => setTransaction({ ...transaction, amount: event.target.value })}
-                      min="0"
-                      step="0.01"
-                      className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                      placeholder="0.00"
-                      required
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        id="tx-amount"
+                        value={transaction.amount}
+                        onChange={(event) => setTransaction({ ...transaction, amount: event.target.value })}
+                        min="0"
+                        step="0.01"
+                        className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        placeholder="0.00"
+                        required
+                      />
+                      <select
+                        value={transaction.currency || settings?.currency || 'USD'}
+                        onChange={(event) => setTransaction({ ...transaction, currency: event.target.value })}
+                        className="rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10"
+                      >
+                        <option value="USD">USD</option>
+                        <option value="INR">INR</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="JPY">JPY</option>
+                        <option value="CAD">CAD</option>
+                        <option value="AUD">AUD</option>
+                        <option value="AED">AED</option>
+                        <option value="SAR">SAR</option>
+                        <option value="SGD">SGD</option>
+                      </select>
+                    </div>
                   </div>
 
                   {/* Date Input with Static Label */}

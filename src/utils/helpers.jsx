@@ -16,9 +16,13 @@ export const saveToStorage = (key, value) => {
   }
 }
 
-export const calculateSummary = (transactions) => {
-  const income = transactions.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0)
-  const expense = transactions.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0)
+export const calculateSummary = (transactions, rates = {}) => {
+  const getAmountInUSD = (item) => {
+    const fromRate = rates[item.currency || 'USD'] || 1
+    return Number(item.amount) / fromRate
+  }
+  const income = transactions.filter((item) => item.type === 'income').reduce((sum, item) => sum + getAmountInUSD(item), 0)
+  const expense = transactions.filter((item) => item.type === 'expense').reduce((sum, item) => sum + getAmountInUSD(item), 0)
   const balance = income - expense
   const savings = Math.max(0, balance * 0.22)
   const incomeChange = income ? 12 : 0
