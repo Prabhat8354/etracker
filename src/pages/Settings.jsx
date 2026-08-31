@@ -55,6 +55,9 @@ function Settings() {
       ...prev,
       [key]: value
     }))
+    if (key === 'currency') {
+      updateSavingsGoal({ ...savingsGoal, currency: value })
+    }
     toast.success(`Updated ${key} preference`)
   }
 

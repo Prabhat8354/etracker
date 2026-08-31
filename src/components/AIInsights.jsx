@@ -54,7 +54,7 @@ function AIInsights() {
         const fromRate = rates[t.currency || 'USD'] || 1
         return sum + (Number(t.amount) / fromRate)
       }, 0)
-    
+
     const totalFoodConverted = totalFoodUSD * rate
     const potentialSavings = totalFoodConverted * 0.15 // 15% reduction suggestion
     return {
@@ -67,7 +67,7 @@ function AIInsights() {
   const savingsStreak = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     const monthlyNet = {}
-    
+
     transactions.forEach(t => {
       const date = parseLocalDate(t.date)
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
@@ -98,11 +98,11 @@ function AIInsights() {
     const now = new Date()
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
     const currentDay = now.getDate()
-    
+
     const dailySpendUSD = (summary.expense / rate) / Math.max(1, currentDay)
     const estimatedExpenseUSD = dailySpendUSD * daysInMonth
     const currentIncomeUSD = summary.income / rate
-    
+
     const predictedUSD = currentIncomeUSD - estimatedExpenseUSD
     return predictedUSD * rate
   }, [summary.income, summary.expense, rate])
@@ -127,7 +127,7 @@ function AIInsights() {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        
+
         {/* Card 1: Spending Trend */}
         <motion.div
           whileHover={{ y: -4, scale: 1.015 }}
@@ -160,7 +160,7 @@ function AIInsights() {
             </div>
           </div>
           <p className="mt-4 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-            {topCategory !== 'None' 
+            {topCategory !== 'None'
               ? `Spending in ${topCategory} represents the largest portion of current expenses.`
               : 'Add expense logs to review largest category distributions.'}
           </p>
