@@ -19,7 +19,7 @@ export const formatCurrency = (value, currency = 'USD') => {
     SAR: 'SR ',
     SGD: 'S$'
   }
-  const symbol = symbols[currency] || '$'
+  const symbol = symbols[currency] || (currency === 'unknown' ? '' : `${currency} `)
   const formatted = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2

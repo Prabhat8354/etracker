@@ -31,6 +31,7 @@ export function AuthProvider({ children }) {
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
+        console.log("Authenticated UID:", firebaseUser.uid);
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
@@ -39,6 +40,7 @@ export function AuthProvider({ children }) {
           createdAt: firebaseUser.metadata?.creationTime || null,
         })
       } else {
+        console.log("Authenticated UID: null");
         setUser(null)
       }
       setAuthLoading(false)

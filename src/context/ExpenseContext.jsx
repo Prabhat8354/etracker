@@ -4,7 +4,7 @@ import { sampleCategories } from '../data/sampleData.jsx'
 import { calculateSummary, generateGreeting, loadFromStorage, saveToStorage, parseLocalDate } from '../utils/helpers.jsx'
 import { useAuthContext } from './AuthContext.jsx'
 import { db } from '../firebase/firebaseConfig.js'
-import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, getDocs } from 'firebase/firestore'
+import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
 import { convertCurrency as _convertCurrency } from '../utils/currency.js'
 
 const ExpenseContext = createContext(null)
@@ -123,15 +123,16 @@ export function ExpenseProvider({ children }) {
         for (const localTx of localData) {
           if (!dbTxs[localTx.id]) {
             const migratedTx = {
+              userId: user.uid,
               title: localTx.title || 'Untitled',
               amount: Number(localTx.amount) || 0,
-              currency: localTx.currency || 'USD',
+              currency: localTx.currency || 'unknown',
               category: localTx.category || 'Other',
               notes: localTx.notes || '',
               type: localTx.type || 'expense',
               date: localTx.date || new Date().toISOString().slice(0, 10),
-              createdAt: localTx.createdAt || new Date().toISOString(),
-              updatedAt: localTx.updatedAt || new Date().toISOString()
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
             }
             try {
               await setDoc(doc(db, 'users', user.uid, 'transactions', localTx.id), migratedTx)
@@ -415,7 +416,9 @@ export function ExpenseProvider({ children }) {
       toast.error('You must be logged in to add transactions.')
       return
     }
+    const transactionsRef = collection(db, 'users', user.uid, 'transactions')
     const newTx = {
+      userId: user.uid,
       title: transaction.title || '',
       amount: Number(transaction.amount) || 0,
       currency: transaction.currency || settings.currency || 'USD',
@@ -423,16 +426,19 @@ export function ExpenseProvider({ children }) {
       notes: transaction.notes || '',
       type: transaction.type || 'expense',
       date: transaction.date || new Date().toISOString().slice(0, 10),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     }
-    setTransactions((prev) => [{ id: transaction.id, ...newTx }, ...prev])
+
+    console.log("Firestore transaction write:", newTx);
+
     try {
-      await setDoc(doc(db, 'users', user.uid, 'transactions', transaction.id), newTx)
+      const docRef = await addDoc(transactionsRef, newTx)
+      console.log("Firestore transaction ID:", docRef.id);
       toast.success('Transaction added successfully')
     } catch (error) {
-      console.error('Firestore save failed:', error)
-      toast.error('Failed to save transaction')
+      console.error("Firestore transaction write failed:", error);
+      toast.error('Failed to save transaction: ' + error.message)
     }
   }
 
@@ -446,27 +452,25 @@ export function ExpenseProvider({ children }) {
       notes: updatedTransaction.notes || '',
       type: updatedTransaction.type || 'expense',
       date: updatedTransaction.date || new Date().toISOString().slice(0, 10),
-      updatedAt: new Date().toISOString()
+      updatedAt: serverTimestamp()
     }
-    setTransactions((prev) => prev.map((item) => (item.id === updatedTransaction.id ? { ...item, ...newTx } : item)))
     try {
-      await setDoc(doc(db, 'users', user.uid, 'transactions', updatedTransaction.id), newTx, { merge: true })
+      await updateDoc(doc(db, 'users', user.uid, 'transactions', updatedTransaction.id), newTx)
       toast.success('Transaction updated successfully')
     } catch (error) {
       console.error('Firestore update failed:', error)
-      toast.error('Failed to update transaction')
+      toast.error('Failed to update transaction: ' + error.message)
     }
   }
 
   const deleteTransaction = async (id) => {
     if (!user) return
-    setTransactions((prev) => prev.filter((item) => item.id !== id))
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'transactions', id))
       toast.success('Transaction deleted successfully')
     } catch (error) {
       console.error('Firestore delete failed:', error)
-      toast.error('Failed to delete transaction')
+      toast.error('Failed to delete transaction: ' + error.message)
     }
   }
 

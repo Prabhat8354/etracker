@@ -35,6 +35,7 @@ if (missingEnvVars.length === 0) {
     app = initializeApp(firebaseConfig)
     auth = getAuth(app)
     db = getFirestore(app)
+    console.log("Firebase project:", firebaseConfig.projectId);
   } catch (error) {
     firebaseError = error instanceof Error ? error.message : 'Failed to initialize Firebase.'
   }
