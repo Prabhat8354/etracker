@@ -19,13 +19,12 @@ import AddBillModal from '../components/AddBillModal.jsx'
 import { formatCurrency, parseLocalDate } from '../utils/helpers.jsx'
 
 function Savings() {
-  const { transactions, summary, settings, setSettings, rates, bills, deleteBill, toggleBillStatus, convertCurrency } = useExpenseContext()
+  const { transactions, summary, settings, setSettings, rates, bills, deleteBill, toggleBillStatus, convertCurrency, savingsGoal, updateSavingsGoal } = useExpenseContext()
   const [isBillModalOpen, setIsBillModalOpen] = useState(false)
   const [editingBill, setEditingBill] = useState(null)
 
   // Smart Savings Goal Calculations
-  const savingsGoal = settings.savingsGoal ?? 500
-  const period = settings.savingsGoalPeriod ?? 'monthly'
+  const period = savingsGoal.frequency || 'monthly'
   const currency = settings.currency || 'USD'
 
   // Filter transactions in the current period to calculate target savings progress
@@ -63,8 +62,9 @@ function Savings() {
   
   // Real-time Savings = Inflow - Outflow in the selected goal period
   const currentSavings = Math.max(0, periodIncome - periodExpense)
-  const savingsProgress = Math.min(100, Math.round((currentSavings / savingsGoal) * 100)) || 0
-  const remainingSavings = Math.max(0, savingsGoal - currentSavings)
+  const convertedGoal = convertCurrency(savingsGoal.amount, savingsGoal.currency || 'USD', settings.currency)
+  const savingsProgress = Math.min(100, Math.round((currentSavings / convertedGoal) * 100)) || 0
+  const remainingSavings = Math.max(0, convertedGoal - currentSavings)
 
   // Circular ring properties
   const radius = 35
@@ -90,16 +90,18 @@ function Savings() {
 
     const now = new Date()
     const currentKey = `${months[now.getMonth()]} ${now.getFullYear()}`
+    const rate = rates[settings.currency] || 1
+    const goalVal = convertCurrency(savingsGoal.amount, savingsGoal.currency || 'USD', settings.currency)
 
     return Object.entries(historyMap)
       .filter(([key]) => key !== currentKey)
       .map(([key, data]) => {
         const savings = Math.max(0, data.income - data.expense) * rate
         return {
-          period: key,
+          month: key,
           savings,
-          goal: savingsGoal,
-          completed: savings >= savingsGoal,
+          goal: goalVal,
+          completed: savings >= goalVal,
           year: data.year,
           monthIdx: data.monthIdx
         }
@@ -108,7 +110,7 @@ function Savings() {
         if (a.year !== b.year) return b.year - a.year
         return b.monthIdx - a.monthIdx
       })
-  }, [transactions, rate, savingsGoal])
+  }, [transactions, rates, settings.currency, savingsGoal])
 
   // Count Completed/Missed goals
   const goalMetrics = useMemo(() => {
@@ -238,7 +240,7 @@ function Savings() {
           {/* Linear Progress bar */}
           <div className="mt-8 border-t border-slate-200/20 pt-6 dark:border-white/[0.02]">
             <div className="flex justify-between text-xs font-semibold text-slate-400 dark:text-slate-500 mb-2">
-              <span>Goal limit: {formatCurrency(savingsGoal, currency)}</span>
+              <span>Goal limit: {formatCurrency(convertedGoal, currency)}</span>
               <span>{savingsProgress}% Met</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900">
@@ -252,7 +254,7 @@ function Savings() {
             </p>
           </div>
         </div>
-
+ 
         {/* Edit savings settings Card */}
         <div className="rounded-3xl border border-slate-200/30 bg-white/60 p-8 shadow-soft backdrop-blur-md dark:border-white/[0.02] dark:bg-slate-950/40 space-y-6">
           <div>
@@ -261,7 +263,7 @@ function Savings() {
               Configure savings target limits and durations.
             </p>
           </div>
-
+ 
           <div className="space-y-4">
             
             {/* Value Editor */}
@@ -270,16 +272,34 @@ function Savings() {
                 <Target className="h-4 w-4 text-indigo-500" />
                 Target Value
               </label>
-              <input
-                type="number"
-                value={savingsGoal}
-                onChange={(event) => setSettings(prev => ({ ...prev, savingsGoal: Number(event.target.value) }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-750 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-indigo-400"
-                placeholder="e.g. 500"
-                min="0"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={savingsGoal.amount}
+                  onChange={(event) => updateSavingsGoal({ ...savingsGoal, amount: Number(event.target.value) })}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-750 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-indigo-400"
+                  placeholder="e.g. 500"
+                  min="0"
+                />
+                <select
+                  value={savingsGoal.currency || 'USD'}
+                  onChange={(event) => updateSavingsGoal({ ...savingsGoal, currency: event.target.value })}
+                  className="rounded-xl border border-slate-200 bg-white px-2 py-2.5 text-xs font-semibold text-slate-750 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                >
+                  <option value="USD">USD</option>
+                  <option value="INR">INR</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="JPY">JPY</option>
+                  <option value="CAD">CAD</option>
+                  <option value="AUD">AUD</option>
+                  <option value="AED">AED</option>
+                  <option value="SAR">SAR</option>
+                  <option value="SGD">SGD</option>
+                </select>
+              </div>
             </div>
-
+ 
             {/* Duration selector */}
             <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-4.5 dark:border-white/[0.02] dark:bg-slate-900/10 space-y-2">
               <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -287,8 +307,8 @@ function Savings() {
                 Goal Duration Period
               </label>
               <select
-                value={period}
-                onChange={(event) => setSettings(prev => ({ ...prev, savingsGoalPeriod: event.target.value }))}
+                value={savingsGoal.frequency || 'monthly'}
+                onChange={(event) => updateSavingsGoal({ ...savingsGoal, frequency: event.target.value })}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-750 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-indigo-400"
               >
                 <option value="daily">Daily Target</option>

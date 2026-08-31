@@ -50,7 +50,7 @@ const CustomTooltip = ({ active, payload, label, currency = 'USD' }) => {
 }
 
 function Analytics() {
-  const { transactions, summary, isLoading, settings, rates, convertCurrency } = useExpenseContext()
+  const { transactions, summary, isLoading, settings, rates, convertCurrency, savingsGoal } = useExpenseContext()
   const currency = settings?.currency || 'USD'
 
   const expenseByCategory = useMemo(() => {
@@ -111,7 +111,7 @@ function Analytics() {
     const avgSavings = totalSavings / activeMonths
     const weeklySavings = avgSavings / 4
     
-    const goal = settings.savingsGoal || 500
+    const goal = convertCurrency(savingsGoal.amount, savingsGoal.currency || 'USD', settings.currency)
     const goalCompletionRate = Math.min(100, Math.round((totalSavings / goal) * 100))
 
     return {
@@ -121,7 +121,7 @@ function Analytics() {
       weeklySavings,
       goalCompletionRate
     }
-  }, [transactions, rates, settings.currency, summary.savings, settings.savingsGoal])
+  }, [transactions, rates, settings.currency, summary.savings, savingsGoal])
 
   if (isLoading) return <EmptyState loading />
 

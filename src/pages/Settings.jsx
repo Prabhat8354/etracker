@@ -21,7 +21,7 @@ import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 
 function Settings() {
-  const { darkMode, setDarkMode, settings, setSettings, setTransactions, resetData, transactions } = useExpenseContext()
+  const { darkMode, setDarkMode, settings, setSettings, setTransactions, resetData, transactions, savingsGoal, updateSavingsGoal } = useExpenseContext()
   const [importData, setImportData] = useState('')
 
   const handleExport = () => {
@@ -227,14 +227,32 @@ function Settings() {
                 <Target className="h-4 w-4 text-rose-500" />
                 Savings Goal Target
               </label>
-              <input
-                type="number"
-                value={settings.savingsGoal ?? 500}
-                onChange={(event) => setSettings(prev => ({ ...prev, savingsGoal: Number(event.target.value) }))}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:focus:border-indigo-400"
-                placeholder="e.g. 500"
-                min="0"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={savingsGoal.amount}
+                  onChange={(event) => updateSavingsGoal({ ...savingsGoal, amount: Number(event.target.value) })}
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:focus:border-indigo-400"
+                  placeholder="e.g. 500"
+                  min="0"
+                />
+                <select
+                  value={savingsGoal.currency || 'USD'}
+                  onChange={(event) => updateSavingsGoal({ ...savingsGoal, currency: event.target.value })}
+                  className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2.5 text-xs font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:focus:border-indigo-400"
+                >
+                  <option value="USD">USD</option>
+                  <option value="INR">INR</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="JPY">JPY</option>
+                  <option value="CAD">CAD</option>
+                  <option value="AUD">AUD</option>
+                  <option value="AED">AED</option>
+                  <option value="SAR">SAR</option>
+                  <option value="SGD">SGD</option>
+                </select>
+              </div>
             </div>
 
             {/* Savings Goal Period */}
@@ -244,8 +262,8 @@ function Settings() {
                 Savings Goal Period
               </label>
               <select
-                value={settings.savingsGoalPeriod || 'monthly'}
-                onChange={(event) => updateSetting('savingsGoalPeriod', event.target.value)}
+                value={savingsGoal.frequency || 'monthly'}
+                onChange={(event) => updateSavingsGoal({ ...savingsGoal, frequency: event.target.value })}
                 className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:focus:border-indigo-400"
               >
                 <option value="daily">Daily Goal</option>

@@ -12,7 +12,7 @@ import { formatDate, formatCurrency } from '../utils/helpers.jsx'
 
 function Dashboard() {
   const { user } = useAuthContext()
-  const { summary, filteredTransactions, isLoading, transactions, settings, rates, quote, bills, convertCurrency } = useExpenseContext()
+  const { summary, filteredTransactions, isLoading, transactions, settings, rates, quote, bills, convertCurrency, savingsGoal } = useExpenseContext()
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const profileName = user?.displayName || user?.email?.split('@')[0] || 'User'
@@ -43,9 +43,9 @@ function Dashboard() {
   const budgetProgress = Math.min(100, Math.round((summary.expense / monthlyBudget) * 100))
 
   // Savings Goal calculations
-  const savingsGoal = settings.savingsGoal ?? 500
-  const savingsProgress = Math.min(100, Math.round((summary.savings / savingsGoal) * 100)) || 0
-  const remainingSavings = Math.max(0, savingsGoal - summary.savings)
+  const convertedGoal = convertCurrency(savingsGoal.amount, savingsGoal.currency || 'USD', settings.currency)
+  const savingsProgress = Math.min(100, Math.round((summary.savings / convertedGoal) * 100)) || 0
+  const remainingSavings = Math.max(0, convertedGoal - summary.savings)
 
   // Circular progress dimensions
   const radius = 30

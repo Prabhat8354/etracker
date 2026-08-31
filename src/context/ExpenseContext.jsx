@@ -38,6 +38,11 @@ export function ExpenseProvider({ children }) {
   const { user, authLoading } = useAuthContext()
   const [transactions, setTransactions] = useState([])
   const [bills, setBills] = useState([])
+  const [savingsGoal, setSavingsGoal] = useState({
+    amount: 500,
+    frequency: 'monthly',
+    currency: 'USD'
+  })
   const [darkMode, setDarkMode] = useState(() => {
     try {
       return localStorage.getItem('etracker_theme_dark') === 'true'
@@ -49,8 +54,6 @@ export function ExpenseProvider({ children }) {
   const [settings, setSettings] = useState({
     currency: 'USD',
     monthlyBudget: 3000,
-    savingsGoal: 500,
-    savingsGoalPeriod: 'monthly',
     language: 'en',
     animationSpeed: 'normal',
     notificationsEnabled: true
@@ -158,13 +161,10 @@ export function ExpenseProvider({ children }) {
   useEffect(() => {
     if (authLoading) return
     if (!user) {
-      setBills([])
       setFilters({ type: 'all', category: 'all', sort: 'newest', query: '', range: 'all' })
       setSettings({
         currency: 'USD',
         monthlyBudget: 3000,
-        savingsGoal: 500,
-        savingsGoalPeriod: 'monthly',
         language: 'en',
         animationSpeed: 'normal',
         notificationsEnabled: true
@@ -172,14 +172,7 @@ export function ExpenseProvider({ children }) {
       return
     }
 
-    const storedBills = loadFromStorage(userStorageKey(user.uid, 'bills'))
     const storedFilters = loadFromStorage(userStorageKey(user.uid, 'filters'))
-
-    setBills(storedBills ?? [
-      { id: '1', name: 'Adobe Creative Suite', amount: 52.99, date: '2026-08-12', category: 'Entertainment', repeat: 'monthly', status: 'pending' },
-      { id: '2', name: 'Vercel Pro Hosting', amount: 20.00, date: '2026-08-18', category: 'Software', repeat: 'monthly', status: 'pending' },
-      { id: '3', name: 'AWS Cloud server', amount: 145.50, date: '2026-08-24', category: 'Software', repeat: 'monthly', status: 'pending' }
-    ])
     setFilters(storedFilters ?? { type: 'all', category: 'all', sort: 'newest', query: '', range: 'all' })
 
     if (!db) {
@@ -203,15 +196,20 @@ export function ExpenseProvider({ children }) {
         const storedSettings = loadFromStorage(userStorageKey(user.uid, 'settings')) || {
           currency: 'USD',
           monthlyBudget: 3000,
-          savingsGoal: 500,
-          savingsGoalPeriod: 'monthly',
           language: 'en',
           animationSpeed: 'normal',
           notificationsEnabled: true
         }
+        const cleanSettings = {
+          currency: storedSettings.currency ?? 'USD',
+          monthlyBudget: storedSettings.monthlyBudget ?? 3000,
+          language: storedSettings.language ?? 'en',
+          animationSpeed: storedSettings.animationSpeed ?? 'normal',
+          notificationsEnabled: storedSettings.notificationsEnabled ?? true
+        }
         try {
-          await setDoc(docRef, storedSettings)
-          setSettings(storedSettings)
+          await setDoc(docRef, cleanSettings)
+          setSettings(cleanSettings)
         } catch (err) {
           console.error("Failed to write default settings to Firestore:", err)
         }
@@ -223,10 +221,109 @@ export function ExpenseProvider({ children }) {
     return () => unsubscribe()
   }, [authLoading, user])
 
+  // Set up realtime Firestore synchronization for bills
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) {
+      setBills([])
+      return
+    }
+
+    if (!db) {
+      const storedBills = loadFromStorage(userStorageKey(user.uid, 'bills'))
+      setBills(storedBills ?? [])
+      return
+    }
+
+    const q = collection(db, 'users', user.uid, 'bills')
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const dbBills = {}
+      snapshot.forEach((docSnap) => {
+        dbBills[docSnap.id] = { id: docSnap.id, ...docSnap.data() }
+      })
+
+      // Seed default bills if empty in Firestore and no local storage bills
+      if (snapshot.empty) {
+        const storedBills = loadFromStorage(userStorageKey(user.uid, 'bills'))
+        const initialList = (storedBills && storedBills.length > 0) ? storedBills : [
+          { id: '1', name: 'Adobe Creative Suite', amount: 52.99, date: '2026-08-12', category: 'Entertainment', repeat: 'monthly', status: 'pending' },
+          { id: '2', name: 'Vercel Pro Hosting', amount: 20.00, date: '2026-08-18', category: 'Software', repeat: 'monthly', status: 'pending' },
+          { id: '3', name: 'AWS Cloud server', amount: 145.50, date: '2026-08-24', category: 'Software', repeat: 'monthly', status: 'pending' }
+        ]
+        for (const bill of initialList) {
+          try {
+            await setDoc(doc(db, 'users', user.uid, 'bills', bill.id), bill)
+            dbBills[bill.id] = bill
+          } catch (err) {
+            console.error("Failed to seed bill:", bill.id, err)
+          }
+        }
+      }
+
+      setBills(Object.values(dbBills))
+    }, (error) => {
+      console.error("Firestore bills listener failed:", error)
+    })
+
+    return () => unsubscribe()
+  }, [authLoading, user])
+
+  // Set up realtime Firestore synchronization for savings goals
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) {
+      setSavingsGoal({
+        amount: 500,
+        frequency: 'monthly',
+        currency: 'USD'
+      })
+      return
+    }
+
+    if (!db) {
+      const storedSettings = loadFromStorage(userStorageKey(user.uid, 'settings')) || {}
+      setSavingsGoal({
+        amount: storedSettings.savingsGoal ?? 500,
+        frequency: storedSettings.savingsGoalPeriod ?? 'monthly',
+        currency: storedSettings.currency ?? 'USD'
+      })
+      return
+    }
+
+    const docRef = doc(db, 'users', user.uid, 'savings', 'goal')
+    const unsubscribe = onSnapshot(docRef, async (docSnap) => {
+      if (docSnap.exists()) {
+        const remoteGoal = docSnap.data()
+        setSavingsGoal((prev) => {
+          const keys = Object.keys(remoteGoal)
+          const isDifferent = keys.some(key => prev[key] !== remoteGoal[key])
+          return isDifferent ? remoteGoal : prev
+        })
+      } else {
+        // Create default savings goal target
+        const storedSettings = loadFromStorage(userStorageKey(user.uid, 'settings')) || {}
+        const defaultGoal = {
+          amount: storedSettings.savingsGoal ?? 500,
+          frequency: storedSettings.savingsGoalPeriod ?? 'monthly',
+          currency: storedSettings.currency ?? 'USD'
+        }
+        try {
+          await setDoc(docRef, defaultGoal)
+          setSavingsGoal(defaultGoal)
+        } catch (err) {
+          console.error("Failed to write default savings goal to Firestore:", err)
+        }
+      }
+    }, (error) => {
+      console.error("Firestore savings goal listener failed:", error)
+    })
+
+    return () => unsubscribe()
+  }, [authLoading, user])
+
   // Save changes to localStorage and Firestore settings
   useEffect(() => {
     if (!user || authLoading || isLoading) return
-    saveToStorage(userStorageKey(user.uid, 'bills'), bills)
     saveToStorage(userStorageKey(user.uid, 'filters'), filters)
 
     const saveSettingsToFirestore = async () => {
@@ -353,7 +450,7 @@ export function ExpenseProvider({ children }) {
     }
     setTransactions((prev) => prev.map((item) => (item.id === updatedTransaction.id ? { ...item, ...newTx } : item)))
     try {
-      await updateDoc(doc(db, 'users', user.uid, 'transactions', updatedTransaction.id), newTx)
+      await setDoc(doc(db, 'users', user.uid, 'transactions', updatedTransaction.id), newTx, { merge: true })
       toast.success('Transaction updated successfully')
     } catch (error) {
       console.error('Firestore update failed:', error)
@@ -374,30 +471,70 @@ export function ExpenseProvider({ children }) {
   }
 
   // Bills Management Actions
-  const addBill = (bill) => {
+  const addBill = async (bill) => {
+    if (!user) return
     setBills((prev) => [bill, ...prev])
-    toast.success('Bill registered successfully')
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'bills', bill.id), bill)
+      toast.success('Bill registered successfully')
+    } catch (err) {
+      console.error("Failed to add bill:", err)
+      toast.error("Failed to register bill")
+    }
   }
 
-  const updateBill = (updatedBill) => {
+  const updateBill = async (updatedBill) => {
+    if (!user) return
     setBills((prev) => prev.map((item) => (item.id === updatedBill.id ? updatedBill : item)))
-    toast.success('Bill updated successfully')
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'bills', updatedBill.id), updatedBill, { merge: true })
+      toast.success('Bill updated successfully')
+    } catch (err) {
+      console.error("Failed to update bill:", err)
+      toast.error("Failed to update bill")
+    }
   }
 
-  const deleteBill = (id) => {
+  const deleteBill = async (id) => {
+    if (!user) return
     setBills((prev) => prev.filter((item) => item.id !== id))
-    toast.success('Bill removed successfully')
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'bills', id))
+      toast.success('Bill removed successfully')
+    } catch (err) {
+      console.error("Failed to delete bill:", err)
+      toast.error("Failed to remove bill")
+    }
   }
 
-  const toggleBillStatus = (id) => {
-    setBills((prev) => prev.map((item) => {
-      if (item.id === id) {
-        const nextStatus = item.status === 'paid' ? 'pending' : 'paid'
-        toast.success(`Bill marked as ${nextStatus}`)
-        return { ...item, status: nextStatus }
-      }
-      return item
-    }))
+  const toggleBillStatus = async (id) => {
+    if (!user) return
+    const bill = bills.find((b) => b.id === id)
+    if (!bill) return
+    const nextStatus = bill.status === 'paid' ? 'pending' : 'paid'
+    setBills((prev) => prev.map((item) => (item.id === id ? { ...item, status: nextStatus } : item)))
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'bills', id), { status: nextStatus })
+      toast.success(`Bill marked as ${nextStatus}`)
+    } catch (err) {
+      console.error("Failed to toggle bill status:", err)
+      toast.error("Failed to update bill status")
+    }
+  }
+
+  const updateSavingsGoal = async (updatedGoal) => {
+    if (!user) return
+    const goalData = {
+      amount: Number(updatedGoal.amount) || 0,
+      frequency: updatedGoal.frequency || 'monthly',
+      currency: updatedGoal.currency || 'USD'
+    }
+    setSavingsGoal(goalData)
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'savings', 'goal'), goalData)
+    } catch (err) {
+      console.error("Failed to update savings goal in Firestore:", err)
+    }
   }
 
   const resetData = async () => {
@@ -409,6 +546,27 @@ export function ExpenseProvider({ children }) {
         snapshot.forEach((docSnap) => {
           batchPromises.push(deleteDoc(doc(db, 'users', user.uid, 'transactions', docSnap.id)))
         })
+        
+        const qBills = query(collection(db, 'users', user.uid, 'bills'))
+        const snapshotBills = await getDocs(qBills)
+        snapshotBills.forEach((docSnap) => {
+          batchPromises.push(deleteDoc(doc(db, 'users', user.uid, 'bills', docSnap.id)))
+        })
+
+        batchPromises.push(setDoc(doc(db, 'users', user.uid, 'savings', 'goal'), {
+          amount: 500,
+          frequency: 'monthly',
+          currency: 'USD'
+        }))
+
+        batchPromises.push(setDoc(doc(db, 'users', user.uid, 'settings', 'config'), {
+          currency: 'USD',
+          monthlyBudget: 3000,
+          language: 'en',
+          animationSpeed: 'normal',
+          notificationsEnabled: true
+        }))
+
         await Promise.all(batchPromises)
       } catch (err) {
         console.error("Failed to delete Firestore data during reset:", err)
@@ -420,11 +578,14 @@ export function ExpenseProvider({ children }) {
     setSettings({
       currency: 'USD',
       monthlyBudget: 3000,
-      savingsGoal: 500,
-      savingsGoalPeriod: 'monthly',
       language: 'en',
       animationSpeed: 'normal',
       notificationsEnabled: true
+    })
+    setSavingsGoal({
+      amount: 500,
+      frequency: 'monthly',
+      currency: 'USD'
     })
     setDarkMode(false)
     toast.success('All data cleared')
@@ -445,6 +606,8 @@ export function ExpenseProvider({ children }) {
         setFilters,
         settings,
         setSettings,
+        savingsGoal,
+        updateSavingsGoal,
         setTransactions,
         addTransaction,
         updateTransaction,

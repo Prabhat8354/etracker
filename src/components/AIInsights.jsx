@@ -16,7 +16,7 @@ import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import { formatCurrency, parseLocalDate } from '../utils/helpers.jsx'
 
 function AIInsights() {
-  const { transactions, summary, settings, rates, convertCurrency } = useExpenseContext()
+  const { transactions, summary, settings, rates, convertCurrency, savingsGoal } = useExpenseContext()
   const currency = settings?.currency || 'USD'
   const rate = rates[currency] || 1
 
@@ -35,7 +35,7 @@ function AIInsights() {
 
   // 2. Goal proximity details
   const goalProximity = useMemo(() => {
-    const goal = settings.savingsGoal || 500
+    const goal = convertCurrency(savingsGoal.amount, savingsGoal.currency || 'USD', settings.currency)
     const completionRate = Math.min(100, Math.round((summary.savings / goal) * 100)) || 0
     if (completionRate >= 100) {
       return { msg: 'Target savings goal achieved!', rate: completionRate, action: 'Outstanding savings performance.' }
@@ -44,7 +44,7 @@ function AIInsights() {
       return { msg: 'Almost reached your monthly goal.', rate: completionRate, action: 'Save a bit more to cross the target.' }
     }
     return { msg: `Goal progress is at ${completionRate}%`, rate: completionRate, action: 'Keep checking ledger updates.' }
-  }, [summary.savings, settings.savingsGoal])
+  }, [summary.savings, settings.currency, rates, savingsGoal])
 
   // 3. Dining out optimization suggestion
   const diningOptimization = useMemo(() => {
