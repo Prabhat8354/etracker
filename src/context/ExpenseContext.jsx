@@ -152,6 +152,7 @@ export function ExpenseProvider({ children }) {
       setIsLoading(false)
     }, (error) => {
       console.error("Firestore transaction listener failed:", error)
+      toast.error("Unable to load transactions. Please check your connection and Firestore security rules.")
       setIsLoading(false)
     })
 
@@ -217,6 +218,7 @@ export function ExpenseProvider({ children }) {
       }
     }, (error) => {
       console.error("Firestore settings listener failed:", error)
+      toast.error("Unable to load settings configuration. Please check your Firestore security rules.")
     })
 
     return () => unsubscribe()
@@ -264,6 +266,7 @@ export function ExpenseProvider({ children }) {
       setBills(Object.values(dbBills))
     }, (error) => {
       console.error("Firestore bills listener failed:", error)
+      toast.error("Unable to load upcoming bills. Please check your Firestore security rules.")
     })
 
     return () => unsubscribe()
@@ -317,6 +320,7 @@ export function ExpenseProvider({ children }) {
       }
     }, (error) => {
       console.error("Firestore savings goal listener failed:", error)
+      toast.error("Unable to load savings goal. Please check your Firestore security rules.")
     })
 
     return () => unsubscribe()
@@ -333,6 +337,7 @@ export function ExpenseProvider({ children }) {
         saveToStorage(userStorageKey(user.uid, 'settings'), settings)
       } catch (err) {
         console.error("Failed to save settings to Firestore:", err)
+        toast.error("Unable to save settings. Please check your connection and Firestore security rules.")
       }
     }
     saveSettingsToFirestore()
@@ -538,6 +543,7 @@ export function ExpenseProvider({ children }) {
       await setDoc(doc(db, 'users', user.uid, 'savings', 'goal'), goalData)
     } catch (err) {
       console.error("Failed to update savings goal in Firestore:", err)
+      toast.error("Unable to save savings goal. Please check your Firestore security rules.")
     }
   }
 
