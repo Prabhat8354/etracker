@@ -16,12 +16,14 @@ import {
 } from 'lucide-react'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import AddBillModal from '../components/AddBillModal.jsx'
+import DeleteModal from '../components/DeleteModal.jsx'
 import { formatCurrency, parseLocalDate } from '../utils/helpers.jsx'
 
 function Savings() {
   const { transactions, summary, settings, setSettings, rates, bills, deleteBill, toggleBillStatus, convertCurrency, savingsGoal, updateSavingsGoal } = useExpenseContext()
   const [isBillModalOpen, setIsBillModalOpen] = useState(false)
   const [editingBill, setEditingBill] = useState(null)
+  const [deletingBill, setDeletingBill] = useState(null)
 
   // Smart Savings Goal Calculations
   const period = savingsGoal.frequency || 'monthly'
@@ -137,7 +139,7 @@ function Savings() {
     if (bill.status === 'paid') {
       return { label: 'Paid', bg: 'bg-emerald-500/10 text-emerald-500', border: 'border-emerald-500/25', ring: 'bg-emerald-500' }
     }
-    const daysLeft = calculateDaysLeft(bill.date)
+    const daysLeft = calculateDaysLeft(bill.dueDate || bill.date)
     if (daysLeft < 0) {
       return { label: `Overdue (${Math.abs(daysLeft)}d)`, bg: 'bg-rose-500/10 text-rose-500', border: 'border-rose-500/25', ring: 'bg-rose-500' }
     }
@@ -361,7 +363,7 @@ function Savings() {
                       <h4 className="mt-3 text-sm font-extrabold text-slate-800 dark:text-white truncate">{bill.name}</h4>
                       <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        Due {bill.date} • {bill.repeat}
+                        Due {bill.dueDate || bill.date} • {bill.frequency || bill.repeat}
                       </p>
                     </div>
                     
@@ -374,7 +376,7 @@ function Savings() {
                     <button
                       type="button"
                       onClick={() => toggleBillStatus(bill.id)}
-                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition ${
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
                         bill.status === 'paid'
                           ? 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800'
                           : 'bg-indigo-500 text-white shadow-sm shadow-indigo-500/10 hover:bg-indigo-600'
@@ -388,17 +390,15 @@ function Savings() {
                       <button
                         type="button"
                         onClick={() => handleEditBill(bill)}
-                        className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-lg border border-slate-200/40 bg-white/80 text-slate-500 hover:text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-white"
+                        className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-lg border border-slate-200/40 bg-white/80 text-slate-500 hover:text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-white cursor-pointer"
                         aria-label="Edit commitment"
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (window.confirm('Delete this bill commitment?')) deleteBill(bill.id)
-                        }}
-                        className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-lg border border-rose-200/40 bg-rose-50/20 text-rose-500 hover:bg-rose-500/10 dark:border-rose-950/20"
+                        onClick={() => setDeletingBill(bill)}
+                        className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-lg border border-rose-200/40 bg-rose-50/20 text-rose-500 hover:bg-rose-500/10 dark:border-rose-950/20 cursor-pointer"
                         aria-label="Delete commitment"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -409,8 +409,22 @@ function Savings() {
               )
             })
           ) : (
-            <div className="col-span-full py-6">
-              <p className="text-center text-xs font-semibold text-slate-400 dark:text-slate-500">No recurring commitments registered. Add your first commitment.</p>
+            <div className="col-span-full py-12 px-6 rounded-3xl border border-dashed border-slate-200/60 dark:border-white/[0.05] bg-white/30 dark:bg-slate-950/20 text-center flex flex-col items-center justify-center">
+              <div className="h-12 w-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-3">
+                <Calendar className="h-6 w-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white">No upcoming commitments</h3>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500 max-w-sm">
+                Add your bills and recurring payments to keep track of them.
+              </p>
+              <button
+                type="button"
+                onClick={handleCreateBill}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-md hover:bg-indigo-700 transition cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                + ADD COMMITMENT
+              </button>
             </div>
           )}
         </div>
@@ -502,6 +516,19 @@ function Savings() {
         onOpenChange={setIsBillModalOpen}
         initialBill={editingBill}
       />
+
+      {/* Delete Commitment Confirmation Modal */}
+      {deletingBill && (
+        <DeleteModal
+          title="Delete Commitment"
+          message={`Are you sure you want to delete "${deletingBill.name}"? This commitment will be removed from your schedule and Firestore.`}
+          onConfirm={async () => {
+            await deleteBill(deletingBill.id)
+            setDeletingBill(null)
+          }}
+          onCancel={() => setDeletingBill(null)}
+        />
+      )}
     </div>
   )
 }

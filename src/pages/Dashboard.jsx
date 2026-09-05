@@ -84,7 +84,7 @@ function Dashboard() {
     return [...bills]
       .filter((b) => b.status === 'pending')
       .map((b) => {
-        const daysLeft = calculateDaysLeft(b.date)
+        const daysLeft = calculateDaysLeft(b.dueDate || b.date)
         return {
           ...b,
           daysLeft
@@ -426,7 +426,7 @@ function Dashboard() {
                       </span>
                       <div className="min-w-0">
                         <h4 className="text-xs font-bold text-slate-800 dark:text-white truncate">{bill.name}</h4>
-                        <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Due {bill.date}</p>
+                        <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Due {bill.dueDate || bill.date}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

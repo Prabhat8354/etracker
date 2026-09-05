@@ -11,7 +11,8 @@ import {
   X,
   Sparkles,
   HelpCircle,
-  PiggyBank
+  PiggyBank,
+  Plane
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthContext } from '../context/AuthContext.jsx'
@@ -21,6 +22,7 @@ const links = [
   { label: 'Transactions', icon: Receipt, path: '/transactions' },
   { label: 'Analytics', icon: BarChart3, path: '/analytics' },
   { label: 'Savings', icon: PiggyBank, path: '/savings' },
+  { label: 'Trip Split', icon: Plane, path: '/trips' },
   { label: 'Profile', icon: User, path: '/profile' },
   { label: 'Settings', icon: Settings, path: '/settings' },
 ]

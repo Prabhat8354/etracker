@@ -2,9 +2,11 @@ import { Suspense, lazy, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation, NavLink } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AnimatePresence, motion, useScroll, useSpring } from 'framer-motion'
-import { LayoutDashboard, Receipt, BarChart3, User, Settings as SettingsIcon, PiggyBank } from 'lucide-react'
+import { LayoutDashboard, Receipt, BarChart3, User, Settings as SettingsIcon, PiggyBank, Plane } from 'lucide-react'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { ExpenseProvider } from './context/ExpenseContext.jsx'
+import { NotificationProvider } from './context/NotificationContext.jsx'
+import { TripProvider } from './context/TripContext.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Navbar from './components/Navbar.jsx'
 import Loader from './components/Loader.jsx'
@@ -19,6 +21,8 @@ const Analytics = lazy(() => import('./pages/Analytics.jsx'))
 const Settings = lazy(() => import('./pages/Settings.jsx'))
 const Profile = lazy(() => import('./pages/Profile.jsx'))
 const Savings = lazy(() => import('./pages/Savings.jsx'))
+const Trips = lazy(() => import('./pages/Trips.jsx'))
+const TripDetails = lazy(() => import('./pages/TripDetails.jsx'))
 const Login = lazy(() => import('./pages/Login.jsx'))
 const Register = lazy(() => import('./pages/Register.jsx'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'))
@@ -33,7 +37,9 @@ function App() {
   return (
     <AuthProvider>
       <ExpenseProvider>
-        <Router>
+        <NotificationProvider>
+          <TripProvider>
+            <Router>
           <div className="min-h-screen bg-slate-50 dark:bg-surface-dark text-slate-900 dark:text-slate-100 relative overflow-hidden transition-colors duration-500">
             {/* Ambient Background Blobs */}
             <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
@@ -125,6 +131,22 @@ function App() {
                         </Suspense>
                       }
                     />
+                    <Route
+                      path="/trips"
+                      element={
+                        <Suspense fallback={<Loader />}>
+                          <Trips />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="/trips/:tripId"
+                      element={
+                        <Suspense fallback={<Loader />}>
+                          <TripDetails />
+                        </Suspense>
+                      }
+                    />
                     <Route path="*" element={<Loader notFound />} />
                   </Route>
                 </Route>
@@ -133,6 +155,8 @@ function App() {
           </div>
           <Toaster position="top-right" toastOptions={{ duration: 2800 }} />
         </Router>
+        </TripProvider>
+        </NotificationProvider>
       </ExpenseProvider>
     </AuthProvider>
   )
@@ -150,8 +174,9 @@ function AppLayout({ mobileOpen, setMobileOpen }) {
   const mobileNavLinks = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { label: 'Transactions', icon: Receipt, path: '/transactions' },
-    { label: 'Analytics', icon: BarChart3, path: '/analytics' },
     { label: 'Savings', icon: PiggyBank, path: '/savings' },
+    { label: 'Trips', icon: Plane, path: '/trips' },
+    { label: 'Analytics', icon: BarChart3, path: '/analytics' },
     { label: 'Profile', icon: User, path: '/profile' },
     { label: 'Settings', icon: SettingsIcon, path: '/settings' },
   ]

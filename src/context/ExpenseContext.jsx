@@ -55,8 +55,7 @@ export function ExpenseProvider({ children }) {
     currency: 'USD',
     monthlyBudget: 3000,
     language: 'en',
-    animationSpeed: 'normal',
-    notificationsEnabled: true
+    animationSpeed: 'normal'
   })
   const [isLoading, setIsLoading] = useState(true)
   const [rates, setRates] = useState(() => loadFromStorage('etracker_exchange_rates') ?? defaultRates)
@@ -168,8 +167,7 @@ export function ExpenseProvider({ children }) {
         currency: 'USD',
         monthlyBudget: 3000,
         language: 'en',
-        animationSpeed: 'normal',
-        notificationsEnabled: true
+        animationSpeed: 'normal'
       })
       return
     }
@@ -199,15 +197,13 @@ export function ExpenseProvider({ children }) {
           currency: 'USD',
           monthlyBudget: 3000,
           language: 'en',
-          animationSpeed: 'normal',
-          notificationsEnabled: true
+          animationSpeed: 'normal'
         }
         const cleanSettings = {
           currency: storedSettings.currency ?? 'USD',
           monthlyBudget: storedSettings.monthlyBudget ?? 3000,
           language: storedSettings.language ?? 'en',
-          animationSpeed: storedSettings.animationSpeed ?? 'normal',
-          notificationsEnabled: storedSettings.notificationsEnabled ?? true
+          animationSpeed: storedSettings.animationSpeed ?? 'normal'
         }
         try {
           await setDoc(docRef, cleanSettings)
@@ -224,7 +220,14 @@ export function ExpenseProvider({ children }) {
     return () => unsubscribe()
   }, [authLoading, user])
 
-  // Set up realtime Firestore synchronization for bills
+  // Helper to distinguish demo/mock commitment records from real user-created records
+  const isMockCommitment = (data, id) => {
+    if (id === '1' || id === '2' || id === '3') return true
+    const name = (data?.name || '').trim().toLowerCase()
+    return name === 'adobe creative suite' || name === 'vercel pro hosting' || name === 'aws cloud server'
+  }
+
+  // Set up realtime Firestore synchronization for commitments (users/{uid}/commitments)
   useEffect(() => {
     if (authLoading) return
     if (!user) {
@@ -233,40 +236,73 @@ export function ExpenseProvider({ children }) {
     }
 
     if (!db) {
-      const storedBills = loadFromStorage(userStorageKey(user.uid, 'bills'))
-      setBills(storedBills ?? [])
+      const stored = loadFromStorage(userStorageKey(user.uid, 'commitments')) || loadFromStorage(userStorageKey(user.uid, 'bills')) || []
+      const cleaned = stored.filter((item) => !isMockCommitment(item, item.id))
+      setBills(cleaned)
       return
     }
 
-    const q = collection(db, 'users', user.uid, 'bills')
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const dbBills = {}
-      snapshot.forEach((docSnap) => {
-        dbBills[docSnap.id] = { id: docSnap.id, ...docSnap.data() }
-      })
+    // One-time cleanup of legacy mock bills and migration of real user bills to commitments
+    const cleanupAndMigrateLegacy = async () => {
+      try {
+        const legacyBillsQuery = collection(db, 'users', user.uid, 'bills')
+        const legacySnap = await getDocs(legacyBillsQuery)
+        for (const docSnap of legacySnap.docs) {
+          const data = docSnap.data()
+          if (isMockCommitment(data, docSnap.id)) {
+            // Delete mock records from Firestore
+            await deleteDoc(doc(db, 'users', user.uid, 'bills', docSnap.id))
+          } else {
+            // Migrate real user records to commitments collection
+            await setDoc(doc(db, 'users', user.uid, 'commitments', docSnap.id), {
+              ...data,
+              dueDate: data.dueDate || data.date || new Date().toISOString().slice(0, 10),
+              date: data.date || data.dueDate || new Date().toISOString().slice(0, 10),
+              frequency: data.frequency || data.repeat || 'monthly',
+              repeat: data.repeat || data.frequency || 'monthly'
+            }, { merge: true })
+            await deleteDoc(doc(db, 'users', user.uid, 'bills', docSnap.id))
+          }
+        }
+      } catch (err) {
+        console.warn("Legacy bills cleanup notice:", err)
+      }
+    }
+    cleanupAndMigrateLegacy()
 
-      // Seed default bills if empty in Firestore and no local storage bills
-      if (snapshot.empty) {
-        const storedBills = loadFromStorage(userStorageKey(user.uid, 'bills'))
-        const initialList = (storedBills && storedBills.length > 0) ? storedBills : [
-          { id: '1', name: 'Adobe Creative Suite', amount: 52.99, date: '2026-08-12', category: 'Entertainment', repeat: 'monthly', status: 'pending' },
-          { id: '2', name: 'Vercel Pro Hosting', amount: 20.00, date: '2026-08-18', category: 'Software', repeat: 'monthly', status: 'pending' },
-          { id: '3', name: 'AWS Cloud server', amount: 145.50, date: '2026-08-24', category: 'Software', repeat: 'monthly', status: 'pending' }
-        ]
-        for (const bill of initialList) {
+    // Real-time listener for commitments
+    const q = collection(db, 'users', user.uid, 'commitments')
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const dbCommitments = {}
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data()
+        if (isMockCommitment(data, docSnap.id)) {
+          // Delete any lingering mock records found in commitments
           try {
-            await setDoc(doc(db, 'users', user.uid, 'bills', bill.id), bill)
-            dbBills[bill.id] = bill
-          } catch (err) {
-            console.error("Failed to seed bill:", bill.id, err)
+            await deleteDoc(doc(db, 'users', user.uid, 'commitments', docSnap.id))
+          } catch (_) {}
+        } else {
+          dbCommitments[docSnap.id] = {
+            id: docSnap.id,
+            ...data,
+            name: data.name || '',
+            amount: Number(data.amount) || 0,
+            dueDate: data.dueDate || data.date || '',
+            date: data.date || data.dueDate || '',
+            frequency: data.frequency || data.repeat || 'monthly',
+            repeat: data.repeat || data.frequency || 'monthly',
+            category: data.category || 'Subscription',
+            status: data.status || 'pending'
           }
         }
       }
 
-      setBills(Object.values(dbBills))
+      const list = Object.values(dbCommitments)
+      setBills(list)
+      saveToStorage(userStorageKey(user.uid, 'commitments'), list)
     }, (error) => {
-      console.error("Firestore bills listener failed:", error)
-      toast.error("Unable to load upcoming bills. Please check your Firestore security rules.")
+      console.error("Firestore commitments listener failed:", error)
+      toast.error("Unable to load upcoming commitments. Please check your connection.")
     })
 
     return () => unsubscribe()
@@ -479,40 +515,77 @@ export function ExpenseProvider({ children }) {
     }
   }
 
-  // Bills Management Actions
+  // Commitments / Bills Management Actions
   const addBill = async (bill) => {
-    if (!user) return
-    setBills((prev) => [bill, ...prev])
+    if (!user) {
+      toast.error('You must be signed in to add commitments.')
+      return
+    }
+    const commitmentId = bill.id || uuidv4()
+    const newCommitment = {
+      id: commitmentId,
+      name: bill.name || '',
+      amount: Number(bill.amount) || 0,
+      dueDate: bill.dueDate || bill.date || new Date().toISOString().slice(0, 10),
+      date: bill.date || bill.dueDate || new Date().toISOString().slice(0, 10),
+      frequency: bill.frequency || bill.repeat || 'monthly',
+      repeat: bill.repeat || bill.frequency || 'monthly',
+      category: bill.category || 'Subscription',
+      status: bill.status || 'pending',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }
+
+    setBills((prev) => [newCommitment, ...prev])
     try {
-      await setDoc(doc(db, 'users', user.uid, 'bills', bill.id), bill)
-      toast.success('Bill registered successfully')
+      await setDoc(doc(db, 'users', user.uid, 'commitments', commitmentId), newCommitment)
+      toast.success('Commitment added successfully')
     } catch (err) {
-      console.error("Failed to add bill:", err)
-      toast.error("Failed to register bill")
+      console.error("Failed to add commitment:", err)
+      setBills((prev) => prev.filter((item) => item.id !== commitmentId))
+      toast.error("Failed to save commitment: " + err.message)
     }
   }
 
   const updateBill = async (updatedBill) => {
     if (!user) return
-    setBills((prev) => prev.map((item) => (item.id === updatedBill.id ? updatedBill : item)))
+    const prevBills = bills
+    const updatedData = {
+      ...updatedBill,
+      amount: Number(updatedBill.amount) || 0,
+      dueDate: updatedBill.dueDate || updatedBill.date || '',
+      date: updatedBill.date || updatedBill.dueDate || '',
+      frequency: updatedBill.frequency || updatedBill.repeat || 'monthly',
+      repeat: updatedBill.repeat || updatedBill.frequency || 'monthly',
+      category: updatedBill.category || 'Subscription',
+      status: updatedBill.status || 'pending',
+      updatedAt: serverTimestamp()
+    }
+    setBills((prev) => prev.map((item) => (item.id === updatedBill.id ? updatedData : item)))
     try {
-      await setDoc(doc(db, 'users', user.uid, 'bills', updatedBill.id), updatedBill, { merge: true })
-      toast.success('Bill updated successfully')
+      await setDoc(doc(db, 'users', user.uid, 'commitments', updatedBill.id), updatedData, { merge: true })
+      toast.success('Commitment updated successfully')
     } catch (err) {
-      console.error("Failed to update bill:", err)
-      toast.error("Failed to update bill")
+      console.error("Failed to update commitment:", err)
+      setBills(prevBills)
+      toast.error("Failed to update commitment: " + err.message)
     }
   }
 
   const deleteBill = async (id) => {
     if (!user) return
+    const prevBills = bills
     setBills((prev) => prev.filter((item) => item.id !== id))
     try {
-      await deleteDoc(doc(db, 'users', user.uid, 'bills', id))
-      toast.success('Bill removed successfully')
+      await deleteDoc(doc(db, 'users', user.uid, 'commitments', id))
+      try {
+        await deleteDoc(doc(db, 'users', user.uid, 'bills', id))
+      } catch (_) {}
+      toast.success('Commitment deleted successfully')
     } catch (err) {
-      console.error("Failed to delete bill:", err)
-      toast.error("Failed to remove bill")
+      console.error("Failed to delete commitment:", err)
+      setBills(prevBills)
+      toast.error("Failed to delete commitment: " + err.message)
     }
   }
 
@@ -521,13 +594,18 @@ export function ExpenseProvider({ children }) {
     const bill = bills.find((b) => b.id === id)
     if (!bill) return
     const nextStatus = bill.status === 'paid' ? 'pending' : 'paid'
+    const prevBills = bills
     setBills((prev) => prev.map((item) => (item.id === id ? { ...item, status: nextStatus } : item)))
     try {
-      await updateDoc(doc(db, 'users', user.uid, 'bills', id), { status: nextStatus })
-      toast.success(`Bill marked as ${nextStatus}`)
+      await updateDoc(doc(db, 'users', user.uid, 'commitments', id), {
+        status: nextStatus,
+        updatedAt: serverTimestamp()
+      })
+      toast.success(`Commitment marked as ${nextStatus}`)
     } catch (err) {
-      console.error("Failed to toggle bill status:", err)
-      toast.error("Failed to update bill status")
+      console.error("Failed to toggle commitment status:", err)
+      setBills(prevBills)
+      toast.error("Failed to update commitment status: " + err.message)
     }
   }
 
@@ -557,6 +635,12 @@ export function ExpenseProvider({ children }) {
           batchPromises.push(deleteDoc(doc(db, 'users', user.uid, 'transactions', docSnap.id)))
         })
         
+        const qCommitments = query(collection(db, 'users', user.uid, 'commitments'))
+        const snapshotCommitments = await getDocs(qCommitments)
+        snapshotCommitments.forEach((docSnap) => {
+          batchPromises.push(deleteDoc(doc(db, 'users', user.uid, 'commitments', docSnap.id)))
+        })
+
         const qBills = query(collection(db, 'users', user.uid, 'bills'))
         const snapshotBills = await getDocs(qBills)
         snapshotBills.forEach((docSnap) => {
@@ -573,8 +657,7 @@ export function ExpenseProvider({ children }) {
           currency: 'USD',
           monthlyBudget: 3000,
           language: 'en',
-          animationSpeed: 'normal',
-          notificationsEnabled: true
+          animationSpeed: 'normal'
         }))
 
         await Promise.all(batchPromises)
@@ -589,8 +672,7 @@ export function ExpenseProvider({ children }) {
       currency: 'USD',
       monthlyBudget: 3000,
       language: 'en',
-      animationSpeed: 'normal',
-      notificationsEnabled: true
+      animationSpeed: 'normal'
     })
     setSavingsGoal({
       amount: 500,
@@ -629,11 +711,16 @@ export function ExpenseProvider({ children }) {
         convertToUSD,
         convertCurrency,
         bills,
+        commitments: bills,
         setBills,
         addBill,
+        addCommitment: addBill,
         updateBill,
+        updateCommitment: updateBill,
         deleteBill,
-        toggleBillStatus
+        deleteCommitment: deleteBill,
+        toggleBillStatus,
+        toggleCommitmentStatus: toggleBillStatus
       }}
     >
       {children}

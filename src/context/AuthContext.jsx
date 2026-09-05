@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { auth } from '../firebase/firebaseConfig.js'
+import { auth, db } from '../firebase/firebaseConfig.js'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import {
   browserLocalPersistence,
   browserSessionPersistence,
@@ -29,18 +30,36 @@ export function AuthProvider({ children }) {
       return undefined
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        console.log("Authenticated UID:", firebaseUser.uid);
-        setUser({
+        const userData = {
           uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0],
+          email: (firebaseUser.email || '').toLowerCase(),
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
           photoURL: firebaseUser.photoURL || null,
           createdAt: firebaseUser.metadata?.creationTime || null,
-        })
+        }
+        setUser(userData)
+
+        // Sync to Firestore users collection for friend/email lookup
+        if (db) {
+          try {
+            await setDoc(
+              doc(db, 'users', firebaseUser.uid),
+              {
+                uid: firebaseUser.uid,
+                email: (firebaseUser.email || '').toLowerCase(),
+                displayName: userData.displayName,
+                photoURL: userData.photoURL,
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true }
+            )
+          } catch (err) {
+            console.error('Failed to sync profile to Firestore:', err)
+          }
+        }
       } else {
-        console.log("Authenticated UID: null");
         setUser(null)
       }
       setAuthLoading(false)
@@ -110,6 +129,17 @@ export function AuthProvider({ children }) {
         displayName: firebaseUser.displayName || prev?.displayName,
         photoURL: firebaseUser.photoURL || prev?.photoURL,
       }))
+      if (db) {
+        await setDoc(
+          doc(db, 'users', firebaseUser.uid),
+          {
+            displayName: firebaseUser.displayName || '',
+            photoURL: firebaseUser.photoURL || null,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        )
+      }
       toast.success('Profile updated successfully')
     } catch (error) {
       toast.error(error.message)

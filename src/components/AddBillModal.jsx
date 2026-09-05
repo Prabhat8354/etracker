@@ -9,20 +9,37 @@ const defaultBill = {
   name: '',
   amount: '',
   date: new Date().toISOString().slice(0, 10),
+  dueDate: new Date().toISOString().slice(0, 10),
   category: 'Subscription',
   repeat: 'monthly',
+  frequency: 'monthly',
   status: 'pending'
 }
 
 function AddBillModal({ open, onOpenChange, initialBill }) {
   const { addBill, updateBill, settings } = useExpenseContext()
-  const [bill, setBill] = useState(initialBill ?? defaultBill)
+  const [bill, setBill] = useState(() => {
+    if (!initialBill) return defaultBill
+    return {
+      ...initialBill,
+      date: initialBill.dueDate || initialBill.date || new Date().toISOString().slice(0, 10),
+      repeat: initialBill.frequency || initialBill.repeat || 'monthly'
+    }
+  })
   const isEditMode = Boolean(initialBill)
   const currency = settings?.currency || 'USD'
 
   useEffect(() => {
     if (open) {
-      setBill(initialBill ?? defaultBill)
+      if (initialBill) {
+        setBill({
+          ...initialBill,
+          date: initialBill.dueDate || initialBill.date || new Date().toISOString().slice(0, 10),
+          repeat: initialBill.frequency || initialBill.repeat || 'monthly'
+        })
+      } else {
+        setBill(defaultBill)
+      }
     }
   }, [open, initialBill])
 
@@ -37,10 +54,20 @@ function AddBillModal({ open, onOpenChange, initialBill }) {
       return
     }
 
+    const payload = {
+      ...bill,
+      name: bill.name.trim(),
+      amount: Number(bill.amount),
+      dueDate: bill.date,
+      date: bill.date,
+      frequency: bill.repeat,
+      repeat: bill.repeat
+    }
+
     if (isEditMode) {
-      updateBill({ ...bill, amount: Number(bill.amount) })
+      updateBill(payload)
     } else {
-      addBill({ ...bill, id: uuidv4(), amount: Number(bill.amount) })
+      addBill({ ...payload, id: uuidv4() })
     }
     onOpenChange(false)
   }
@@ -69,7 +96,7 @@ function AddBillModal({ open, onOpenChange, initialBill }) {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-                  {isEditMode ? 'Edit Bill Commitment' : 'Add Bill Commitment'}
+                  {isEditMode ? 'Edit Commitment' : 'Add Commitment'}
                 </h2>
                 <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
                   Configure recurring payments and deadlines.
@@ -184,7 +211,7 @@ function AddBillModal({ open, onOpenChange, initialBill }) {
                     htmlFor="bill-repeat"
                     className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
                   >
-                    Repeat Schedule
+                    Billing Frequency
                   </label>
                   <div className="relative">
                     <select
@@ -193,10 +220,11 @@ function AddBillModal({ open, onOpenChange, initialBill }) {
                       onChange={(event) => setBill({ ...bill, repeat: event.target.value })}
                       className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 appearance-none"
                     >
-                      <option value="daily">Daily</option>
+                      <option value="one-time">One-time</option>
                       <option value="weekly">Weekly</option>
                       <option value="monthly">Monthly</option>
                       <option value="yearly">Yearly</option>
+                      <option value="daily">Daily</option>
                     </select>
                     <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
                       <Clock className="h-3.5 w-3.5" />
@@ -212,7 +240,7 @@ function AddBillModal({ open, onOpenChange, initialBill }) {
                   htmlFor="bill-status"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
                 >
-                  Initial Status
+                  Payment Status
                 </label>
                 <div className="relative">
                   <select
@@ -232,15 +260,15 @@ function AddBillModal({ open, onOpenChange, initialBill }) {
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="rounded-xl border border-slate-200/50 bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 dark:border-white/[0.04] dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                  className="rounded-xl border border-slate-200/50 bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 dark:border-white/[0.04] dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-105"
+                  className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-105 cursor-pointer"
                 >
-                  {isEditMode ? 'Save Bill' : 'Add Bill'}
+                  {isEditMode ? 'Save Commitment' : 'Add Commitment'}
                 </button>
               </div>
 

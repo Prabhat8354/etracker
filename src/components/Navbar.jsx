@@ -10,16 +10,21 @@ import {
   Settings,
   Bell,
   Search,
-  User as UserIcon
+  User as UserIcon,
+  PiggyBank,
+  Receipt,
+  Check
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import { useAuthContext } from '../context/AuthContext.jsx'
+import { useNotificationContext } from '../context/NotificationContext.jsx'
 import SearchBar from './SearchBar.jsx'
 
 function Navbar({ mobileOpen, setMobileOpen }) {
   const { darkMode, setDarkMode, filters, setFilters, greeting } = useExpenseContext()
   const { user, logout } = useAuthContext()
+  const { inAppNotifications = [], unreadCount = 0, markAllNotificationsRead, clearNotification } = useNotificationContext() || {}
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
@@ -86,11 +91,13 @@ function Navbar({ mobileOpen, setMobileOpen }) {
               aria-label="View notifications"
             >
               <Bell className="h-4.5 w-4.5 group-hover:animate-ring transition-transform" />
-              {/* Animated Notification Dot */}
-              <span className="absolute top-2 right-2 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-              </span>
+              {/* Dynamic Notification Badge */}
+              {unreadCount > 0 && (
+                <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                </span>
+              )}
             </button>
 
             <AnimatePresence>
@@ -102,17 +109,73 @@ function Navbar({ mobileOpen, setMobileOpen }) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 z-20 mt-2.5 w-72 rounded-2xl border border-slate-200/50 bg-white/95 p-4 shadow-xl backdrop-blur-md dark:border-slate-800/50 dark:bg-slate-950/95"
+                    className="absolute right-0 z-20 mt-2.5 w-80 rounded-2xl border border-slate-200/50 bg-white/95 p-4 shadow-xl backdrop-blur-md dark:border-slate-800/50 dark:bg-slate-950/95"
                   >
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2 dark:border-slate-800">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Notifications</h3>
-                      <span className="text-[10px] font-bold text-indigo-500 cursor-pointer">Mark all read</span>
-                    </div>
-                    <div className="mt-3 space-y-2.5">
-                      <div className="text-xs p-2 rounded-xl bg-slate-50 dark:bg-slate-900">
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">Welcome to Expense Studio!</p>
-                        <p className="mt-1 text-slate-400">Start organizing and analyzing your custom transactions today.</p>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Notifications</h3>
+                        {unreadCount > 0 && (
+                          <span className="rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.2 text-[9px] font-bold">
+                            {unreadCount} new
+                          </span>
+                        )}
                       </div>
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={markAllNotificationsRead}
+                          className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="mt-3 space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {inAppNotifications.length === 0 ? (
+                        <div className="py-6 text-center">
+                          <Bell className="mx-auto h-6 w-6 text-slate-300 dark:text-slate-600 mb-1" />
+                          <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">No notifications yet</p>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">You're all caught up with your bills and savings!</p>
+                        </div>
+                      ) : (
+                        inAppNotifications.slice(0, 8).map((item) => (
+                          <div
+                            key={item.id}
+                            className={`text-xs p-2.5 rounded-xl border transition-colors ${
+                              item.read
+                                ? 'bg-slate-50/50 dark:bg-slate-900/30 border-transparent text-slate-600 dark:text-slate-400'
+                                : 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-100 dark:border-indigo-900/30 text-slate-800 dark:text-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2">
+                                {item.type === 'bill' && <Calendar className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />}
+                                {item.type === 'savings' && <PiggyBank className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />}
+                                {item.type === 'transaction' && <Receipt className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" />}
+                                {(!item.type || item.type === 'test') && <Bell className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />}
+                                <div>
+                                  <p className="font-semibold leading-tight">{item.title}</p>
+                                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">{item.body}</p>
+                                </div>
+                              </div>
+                              {!item.read && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shrink-0 mt-1" />
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-center">
+                      <Link
+                        to="/settings"
+                        onClick={() => setNotificationsOpen(false)}
+                        className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                      >
+                        Notification Settings →
+                      </Link>
                     </div>
                   </motion.div>
                 </>

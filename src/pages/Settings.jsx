@@ -14,14 +14,36 @@ import {
   Globe,
   Gauge,
   Bell,
+  BellOff,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Minus,
+  AlertCircle,
+  Info,
+  Send,
+  Calendar,
+  PiggyBank,
+  Receipt,
   Target,
   Clock
 } from 'lucide-react'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
+import { useNotificationContext } from '../context/NotificationContext.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 
 function Settings() {
   const { darkMode, setDarkMode, settings, setSettings, setTransactions, resetData, transactions, savingsGoal, updateSavingsGoal } = useExpenseContext()
+  const {
+    notificationSettings,
+    permission,
+    isSupported,
+    status,
+    toggleMasterNotifications,
+    requestPermissionDirectly,
+    updateNotificationPreference,
+    sendTestNotification
+  } = useNotificationContext()
   const [importData, setImportData] = useState('')
 
   const handleExport = () => {
@@ -84,8 +106,9 @@ function Settings() {
       {/* Settings Grid */}
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         
-        {/* Left Side: General Preferences */}
-        <div className="rounded-3xl border border-slate-200/30 bg-white/60 p-8 shadow-soft backdrop-blur-md dark:border-white/[0.02] dark:bg-slate-950/40 space-y-6">
+        {/* Left Column: General Preferences & Notification Settings */}
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-slate-200/30 bg-white/60 p-8 shadow-soft backdrop-blur-md dark:border-white/[0.02] dark:bg-slate-950/40 space-y-6">
           <div>
             <h2 className="text-xl font-bold tracking-tight text-slate-800 dark:text-white">Workspace Preferences</h2>
             <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
@@ -184,34 +207,203 @@ function Settings() {
               </select>
             </div>
 
-            {/* Notifications Toggle */}
+          </div>
+        </div>
+
+        {/* Notification Preferences Card */}
+        <div className="rounded-3xl border border-slate-200/30 bg-white/60 p-8 shadow-soft backdrop-blur-md dark:border-white/[0.02] dark:bg-slate-950/40 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-indigo-500" />
+                <h2 className="text-xl font-bold tracking-tight text-slate-800 dark:text-white">Notification Preferences</h2>
+              </div>
+              <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
+                Manage in-browser alerts, reminders, and delivery settings.
+              </p>
+            </div>
+            
+            {/* Status Badge */}
+            <div className="flex items-center">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${status.badgeClass}`}>
+                {status.key === 'enabled' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+                {status.key === 'permission_required' && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
+                {status.key === 'blocked' && <XCircle className="h-3.5 w-3.5 text-rose-500" />}
+                {status.key === 'unsupported' && <Minus className="h-3.5 w-3.5 text-slate-400" />}
+                {status.key === 'disabled' && <BellOff className="h-3.5 w-3.5 text-slate-400" />}
+                <span>{status.label}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Blocked Permission Warning Banner */}
+          {permission === 'denied' && (
+            <div className="rounded-2xl border border-rose-200/60 bg-rose-50/70 p-4 dark:border-rose-900/40 dark:bg-rose-950/20 flex items-start gap-3">
+              <AlertCircle className="h-4.5 w-4.5 text-rose-500 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold text-rose-700 dark:text-rose-300">Notifications are blocked in your browser</h4>
+                <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                  Permission was blocked for this site. To receive alerts, click the lock or site settings icon 🔒 next to your browser URL bar, set <strong>Notifications</strong> to <strong>Allow</strong>, and refresh this page.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Permission Required Action Banner */}
+          {permission === 'default' && (
+            <div className="rounded-2xl border border-amber-200/60 bg-amber-50/70 p-4 dark:border-amber-900/40 dark:bg-amber-950/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-4.5 w-4.5 text-amber-500 mt-0.5 shrink-0" />
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-bold text-amber-800 dark:text-amber-300">Browser permission required</h4>
+                  <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                    Allow browser notifications to receive upcoming bill reminders and savings milestone updates.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={requestPermissionDirectly}
+                className="shrink-0 rounded-xl bg-amber-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-amber-600 transition cursor-pointer"
+              >
+                Grant Permission
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {/* Master Push & In-Browser Notifications Toggle */}
             <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-4.5 dark:border-white/[0.02] dark:bg-slate-900/10 flex items-center justify-between gap-4">
               <div className="flex items-start gap-3">
-                <Bell className="h-5 w-5 text-amber-500 mt-0.5" />
+                <Bell className="h-5 w-5 text-indigo-500 mt-0.5" />
                 <div>
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">Push notifications</h3>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Toggle alert logs and updates.</p>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">Push & In-Browser Notifications</h3>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Master toggle for all device and application alerts.</p>
                 </div>
               </div>
               
               <button
                 type="button"
-                onClick={() => updateSetting('notificationsEnabled', !(settings.notificationsEnabled ?? true))}
-                className={`relative inline-flex h-6.5 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-indigo-500/10 ${
-                  (settings.notificationsEnabled ?? true) ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'
+                onClick={() => toggleMasterNotifications(!notificationSettings.enabled)}
+                disabled={!isSupported}
+                className={`relative inline-flex h-6.5 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-indigo-500/10 disabled:opacity-50 ${
+                  notificationSettings.enabled ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'
                 }`}
-                aria-label="Toggle notifications"
+                aria-label="Toggle master notifications"
               >
                 <span
                   className={`pointer-events-none inline-block h-5.5 w-5.5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${
-                    (settings.notificationsEnabled ?? true) ? 'translate-x-5.5' : 'translate-x-0'
+                    notificationSettings.enabled ? 'translate-x-5.5' : 'translate-x-0'
                   }`}
                 />
               </button>
             </div>
 
+            {/* Upcoming Bill Reminders Sub-preference */}
+            <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-4.5 dark:border-white/[0.02] dark:bg-slate-900/10 flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <Calendar className="h-5 w-5 text-amber-500 mt-0.5" />
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">Upcoming Bill Reminders</h3>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Receive reminders for bills due within 3 days or overdue.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateNotificationPreference('billReminders', !notificationSettings.billReminders)}
+                disabled={!notificationSettings.enabled}
+                className={`relative inline-flex h-6.5 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-indigo-500/10 disabled:opacity-40 ${
+                  notificationSettings.billReminders ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'
+                }`}
+                aria-label="Toggle bill reminders"
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5.5 w-5.5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${
+                    notificationSettings.billReminders ? 'translate-x-5.5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Savings Goal Milestones Sub-preference */}
+            <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-4.5 dark:border-white/[0.02] dark:bg-slate-900/10 flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <PiggyBank className="h-5 w-5 text-emerald-500 mt-0.5" />
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">Savings Goal Milestones</h3>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Alerts when target savings goals are reached.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateNotificationPreference('savingsReminders', !notificationSettings.savingsReminders)}
+                disabled={!notificationSettings.enabled}
+                className={`relative inline-flex h-6.5 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-indigo-500/10 disabled:opacity-40 ${
+                  notificationSettings.savingsReminders ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'
+                }`}
+                aria-label="Toggle savings reminders"
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5.5 w-5.5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${
+                    notificationSettings.savingsReminders ? 'translate-x-5.5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Transaction Alerts Sub-preference */}
+            <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-4.5 dark:border-white/[0.02] dark:bg-slate-900/10 flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <Receipt className="h-5 w-5 text-purple-500 mt-0.5" />
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">Transaction Alerts</h3>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Instant notification when a transaction is logged.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateNotificationPreference('transactionAlerts', !notificationSettings.transactionAlerts)}
+                disabled={!notificationSettings.enabled}
+                className={`relative inline-flex h-6.5 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-indigo-500/10 disabled:opacity-40 ${
+                  notificationSettings.transactionAlerts ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'
+                }`}
+                aria-label="Toggle transaction alerts"
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5.5 w-5.5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${
+                    notificationSettings.transactionAlerts ? 'translate-x-5.5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Send Test Notification Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <motion.button
+                type="button"
+                onClick={sendTestNotification}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-2.5 text-xs font-bold text-indigo-700 shadow-sm hover:bg-indigo-100 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-950/70 transition cursor-pointer"
+              >
+                <Send className="h-3.5 w-3.5" />
+                Send Test Notification
+              </motion.button>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                Verifies browser notification delivery immediately
+              </span>
+            </div>
+
+            {/* Transparent Browser Limitation Note */}
+            <div className="rounded-xl bg-slate-100/70 dark:bg-slate-900/40 p-3 text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed flex items-start gap-2 border border-slate-200/40 dark:border-slate-800/40">
+              <Info className="h-3.5 w-3.5 text-indigo-500 mt-0.5 shrink-0" />
+              <span>
+                <strong>Delivery Note:</strong> Notifications use the standard browser Notification API and trigger while the tab or browser is active. Alerts cannot be delivered while the browser is completely closed without a background Web Push service.
+              </span>
+            </div>
           </div>
         </div>
+      </div>
 
         {/* Right Side: Targets & Data backups */}
         <div className="rounded-3xl border border-slate-200/30 bg-white/60 p-8 shadow-soft backdrop-blur-md dark:border-white/[0.02] dark:bg-slate-950/40 space-y-6">

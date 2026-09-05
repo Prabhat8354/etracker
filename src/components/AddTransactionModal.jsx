@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, X, Type, DollarSign, Calendar, Tag, FileText } from 'lucide-react'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
+import { useNotificationContext } from '../context/NotificationContext.jsx'
 import { v4 as uuidv4 } from 'uuid'
 import toast from 'react-hot-toast'
 import { sampleCategories } from '../data/sampleData.jsx'
@@ -18,6 +19,7 @@ const defaultTransaction = (defaultCurrency = 'USD') => ({
 
 function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initialTransaction, triggerLabel }) {
   const { addTransaction, updateTransaction, settings } = useExpenseContext()
+  const { triggerTransactionAlert } = useNotificationContext() || {}
   const [localOpen, setLocalOpen] = useState(false)
   const [transaction, setTransaction] = useState(() => initialTransaction ?? defaultTransaction(settings?.currency || 'USD'))
   
@@ -55,7 +57,9 @@ function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initia
     if (isEditMode) {
       updateTransaction({ ...transaction, amount: Number(transaction.amount) })
     } else {
-      addTransaction({ ...transaction, id: uuidv4(), amount: Number(transaction.amount) })
+      const newTx = { ...transaction, id: uuidv4(), amount: Number(transaction.amount) }
+      addTransaction(newTx)
+      triggerTransactionAlert?.(newTx)
     }
 
     setModalOpen(false)
