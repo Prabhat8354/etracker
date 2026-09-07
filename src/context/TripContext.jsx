@@ -125,6 +125,7 @@ export function TripProvider({ children }) {
       (snapshot) => {
         const list = snapshot.docs.map((d) => ({
           id: d.id,
+          _collection: 'tripInvites',
           ...d.data(),
         }))
 
@@ -154,7 +155,7 @@ export function TripProvider({ children }) {
           unsubLegacyInv = onSnapshot(
             query(legacyCol, where('status', '==', 'pending')),
             (legSnap) => {
-              setInvitations(legSnap.docs.map((d) => ({ id: d.id, ...d.data() })))
+              setInvitations(legSnap.docs.map((d) => ({ id: d.id, _collection: 'tripInvitations', ...d.data() })))
               setLoadingInvitations(false)
             },
             (legErr) => {
@@ -202,6 +203,7 @@ export function TripProvider({ children }) {
         createdByEmail: creatorEmail,
         participantIds: [user.uid],
         memberIds: [user.uid], // backward-compatibility alias
+        invitedUserIds: [],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
@@ -262,7 +264,7 @@ export function TripProvider({ children }) {
   }
 
   /**
-   * Invite an existing user to a trip at users/{targetUser.uid}/tripInvites/{inviteId}
+   * Invite an existing user to a trip at users/{targetUser.uid}/tripInvites/{tripId}
    */
   const inviteUserToTrip = async (trip, targetUser) => {
     if (!user || !trip || !targetUser) return false
@@ -275,7 +277,8 @@ export function TripProvider({ children }) {
     }
 
     try {
-      const invRef = doc(collection(db, 'users', targetUser.uid, 'tripInvites'))
+      // Use trip.id as deterministic doc ID for security rule verification
+      const invRef = doc(db, 'users', targetUser.uid, 'tripInvites', trip.id)
       await setDoc(invRef, {
         tripId: trip.id,
         tripName: trip.name,
@@ -291,6 +294,16 @@ export function TripProvider({ children }) {
         updatedAt: serverTimestamp(),
       })
 
+      // Also maintain invitedUserIds on trip doc
+      try {
+        await updateDoc(doc(db, 'trips', trip.id), {
+          invitedUserIds: arrayUnion(targetUser.uid),
+          updatedAt: serverTimestamp(),
+        })
+      } catch (err) {
+        console.warn('Could not update trip.invitedUserIds:', err.message)
+      }
+
       toast.success(`Invitation sent to ${targetUser.displayName || targetUser.email}!`)
       return true
     } catch (error) {
@@ -302,38 +315,58 @@ export function TripProvider({ children }) {
 
   /**
    * Accept an invitation:
-   * Adds user.uid to trips/{tripId}.participantIds and creates member record
+   * 1. Verifies authenticated user
+   * 2. Verifies invited user UID matches authenticated user UID
+   * 3. Verifies invitation status is pending
+   * 4. Adds user.uid to trips/{tripId}.participantIds
+   * 5. Creates member document in trips/{tripId}/members/{user.uid}
+   * 6. Updates invitation status to "accepted"
    */
   const acceptInvitation = async (invitation) => {
     if (!user || !invitation) return false
 
-    try {
-      const tripRef = doc(db, 'trips', invitation.tripId)
-      const tripSnap = await getDoc(tripRef)
+    // 1. Verify the currently authenticated Firebase user
+    if (!user.uid) {
+      toast.error('You must be signed in to join a trip.')
+      return false
+    }
 
-      if (!tripSnap.exists()) {
-        toast.error('This trip no longer exists.')
-        // Mark invitation declined
-        try {
-          await updateDoc(doc(db, 'users', user.uid, 'tripInvites', invitation.id), {
-            status: 'declined',
-            updatedAt: serverTimestamp(),
-          })
-        } catch {}
-        return false
-      }
+    // 2. Verify that the current user's UID matches the invited user's UID
+    if (invitation.invitedUserId && invitation.invitedUserId !== user.uid) {
+      toast.error('This invitation was sent to a different user account.')
+      return false
+    }
+
+    // 3. Verify that the invitation is actually for this user and is pending
+    if (invitation.status && invitation.status !== 'pending') {
+      toast.error('This invitation is no longer pending.')
+      return false
+    }
+
+    const tripId = invitation.tripId
+    if (!tripId) {
+      toast.error('Invalid invitation: missing trip details.')
+      return false
+    }
+
+    const collectionName = invitation._collection || 'tripInvites'
+
+    try {
+      const tripRef = doc(db, 'trips', tripId)
+      const memberRef = doc(db, 'trips', tripId, 'members', user.uid)
+      const invRef = doc(db, 'users', user.uid, collectionName, invitation.id)
 
       const batch = writeBatch(db)
 
-      // 1. Add user UID to trip's participantIds & memberIds
+      // 4. Add user UID to trip's participantIds & memberIds, and remove from invitedUserIds
       batch.update(tripRef, {
         participantIds: arrayUnion(user.uid),
         memberIds: arrayUnion(user.uid),
+        invitedUserIds: arrayRemove(user.uid),
         updatedAt: serverTimestamp(),
       })
 
-      // 2. Add member document to trips/{tripId}/members/{user.uid}
-      const memberRef = doc(db, 'trips', invitation.tripId, 'members', user.uid)
+      // 5. Add member document to trips/{tripId}/members/{user.uid}
       batch.set(memberRef, {
         uid: user.uid,
         displayName: user.displayName || user.email?.split('@')[0] || 'User',
@@ -343,8 +376,7 @@ export function TripProvider({ children }) {
         joinedAt: serverTimestamp(),
       })
 
-      // 3. Mark invitation accepted in tripInvites
-      const invRef = doc(db, 'users', user.uid, 'tripInvites', invitation.id)
+      // 6. Mark invitation accepted in tripInvites / tripInvitations
       batch.update(invRef, {
         status: 'accepted',
         updatedAt: serverTimestamp(),
@@ -356,7 +388,17 @@ export function TripProvider({ children }) {
       return true
     } catch (error) {
       console.error('Error accepting invitation:', error)
-      toast.error('Failed to join trip.')
+      if (error?.code === 'not-found' || error?.message?.includes('No document to update')) {
+        toast.error('This trip no longer exists.')
+        try {
+          await updateDoc(doc(db, 'users', user.uid, collectionName, invitation.id), {
+            status: 'declined',
+            updatedAt: serverTimestamp(),
+          })
+        } catch {}
+      } else {
+        toast.error('Failed to join trip.')
+      }
       return false
     }
   }
