@@ -45,8 +45,9 @@ service cloud.firestore {
 
       // Update:
       // 1) Trip owner can update any field
-      // 2) Existing participant can update without altering participantIds
+      // 2) Existing participant can update details without altering participantIds
       // 3) An invited user can join by appending ONLY their own UID to participantIds
+      // 4) A participant can leave by removing ONLY their own UID from participantIds
       allow update: if request.auth != null && (
         docIsOwner() ||
         (
@@ -55,8 +56,12 @@ service cloud.firestore {
         ) ||
         (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantIds', 'memberIds', 'updatedAt']) &&
-          request.resource.data.participantIds.hasAll(resource.data.participantIds) &&
-          request.auth.uid in request.resource.data.participantIds
+          (
+            // Joining: user adds their own UID
+            (request.resource.data.participantIds.hasAll(resource.data.participantIds) && request.auth.uid in request.resource.data.participantIds) ||
+            // Leaving: user removes their own UID
+            (resource.data.participantIds.hasAll(request.resource.data.participantIds) && !(request.auth.uid in request.resource.data.participantIds))
+          )
         )
       );
 
