@@ -4,7 +4,9 @@
  */
 
 export const round2 = (num) => {
-  return Math.round((Number(num || 0) + Number.EPSILON) * 100) / 100
+  const val = Math.round((Number(num || 0) + Number.EPSILON) * 100) / 100
+  if (Math.abs(val) < 0.00001 || Object.is(val, -0)) return 0
+  return val
 }
 
 /**
@@ -14,9 +16,11 @@ export const round2 = (num) => {
  * @returns {Record<string, number>} Map of participantId -> share amount
  */
 export const calculateEqualShares = (amount, participantIds) => {
-  if (!participantIds || participantIds.length === 0 || !amount) return {}
+  if (!participantIds || !Array.isArray(participantIds) || participantIds.length === 0 || !amount) return {}
 
   const num = Number(amount)
+  if (num <= 0) return {}
+
   const count = participantIds.length
   const baseShare = Math.floor((num / count) * 100) / 100
   const remainder = round2(num - baseShare * count)
@@ -60,9 +64,96 @@ export const validateCustomShares = (totalAmount, shares = {}, participantIds = 
 }
 
 /**
+ * Normalizes an expense's shares and participant IDs across all Firestore schema variations.
+ * Supports:
+ * - Array of objects: shares: [{ userId, amount }] (or uid, id, participantId, share, value)
+ * - Map/Object: shares: { [userId]: amount }
+ * - Array or Map customSplits
+ * - Array of participants: string[] or object[]
+ * - Equal split fallback across ONLY selected participants (never all trip members).
+ * @param {Object} exp Expense object
+ * @returns {{ participantIds: string[], sharesMap: Record<string, number> }}
+ */
+export const getExpenseSharesAndParticipants = (exp) => {
+  if (!exp) return { participantIds: [], sharesMap: {} }
+
+  const amount = Number(exp.amount) || 0
+  const sharesMap = {}
+  const participantIdsSet = new Set()
+
+  const parseEntry = (item) => {
+    if (!item) return
+    if (typeof item === 'string') {
+      participantIdsSet.add(item)
+      return
+    }
+    if (typeof item === 'object') {
+      const uid = item.userId || item.uid || item.id || item.participantId
+      const val = Number(item.amount ?? item.share ?? item.value)
+      if (uid) {
+        participantIdsSet.add(uid)
+        if (!isNaN(val) && val > 0) {
+          sharesMap[uid] = round2(val)
+        }
+      }
+    }
+  }
+
+  // 1. Process exp.shares (array or map)
+  if (Array.isArray(exp.shares)) {
+    exp.shares.forEach(parseEntry)
+  } else if (exp.shares && typeof exp.shares === 'object') {
+    Object.entries(exp.shares).forEach(([uid, val]) => {
+      const numVal = Number(val)
+      if (uid) {
+        participantIdsSet.add(uid)
+        if (!isNaN(numVal) && numVal > 0) {
+          sharesMap[uid] = round2(numVal)
+        }
+      }
+    })
+  }
+
+  // 2. Process exp.customSplits if sharesMap is empty
+  if (Object.keys(sharesMap).length === 0) {
+    if (Array.isArray(exp.customSplits)) {
+      exp.customSplits.forEach(parseEntry)
+    } else if (exp.customSplits && typeof exp.customSplits === 'object') {
+      Object.entries(exp.customSplits).forEach(([uid, val]) => {
+        const numVal = Number(val)
+        if (uid) {
+          participantIdsSet.add(uid)
+          if (!isNaN(numVal) && numVal > 0) {
+            sharesMap[uid] = round2(numVal)
+          }
+        }
+      })
+    }
+  }
+
+  // 3. Process exp.participants (strings or objects)
+  if (Array.isArray(exp.participants)) {
+    exp.participants.forEach(parseEntry)
+  }
+
+  const participantIds = Array.from(participantIdsSet)
+
+  // 4. Equal split dynamic calculation if sharesMap is empty and participants are known
+  if (Object.keys(sharesMap).length === 0 && participantIds.length > 0 && amount > 0) {
+    const computed = calculateEqualShares(amount, participantIds)
+    Object.assign(sharesMap, computed)
+  }
+
+  return {
+    participantIds,
+    sharesMap,
+  }
+}
+
+/**
  * Calculates financial balances for all participants in a trip.
  * @param {Array<{ id: string, name: string, isCurrentUser?: boolean }>} participants
- * @param {Array<{ amount: number, paidBy: string, participants: string[], shares: Record<string, number>, isPersonal?: boolean }>} expenses
+ * @param {Array<{ amount: number, paidBy: string, participants: string[], shares: Record<string, number>, isPersonal?: boolean, splitType?: string }>} expenses
  * @param {Array<{ from: string, to: string, amount: number }>} settlements
  */
 export const calculateParticipantBalances = (participants = [], expenses = [], settlements = []) => {
@@ -89,21 +180,25 @@ export const calculateParticipantBalances = (participants = [], expenses = [], s
     if (exp.isPersonal) return
 
     const amount = Number(exp.amount) || 0
+    if (amount <= 0) return
+
     const payerId = exp.paidBy
 
     // Accumulate total paid
-    if (balanceMap[payerId]) {
+    if (payerId && balanceMap[payerId]) {
       balanceMap[payerId].totalPaid = round2(balanceMap[payerId].totalPaid + amount)
     }
 
-    // Accumulate shares
-    const sharingIds = exp.participants || []
-    const shares = exp.shares || {}
+    // Determine participants and shares strictly from the expense
+    const { participantIds, sharesMap } = getExpenseSharesAndParticipants(exp)
 
-    sharingIds.forEach((pId) => {
+    // Accumulate shares ONLY for participants included in this expense
+    participantIds.forEach((pId) => {
       if (balanceMap[pId]) {
-        const shareAmount = Number(shares[pId]) || 0
-        balanceMap[pId].totalShare = round2(balanceMap[pId].totalShare + shareAmount)
+        const shareAmount = Number(sharesMap[pId]) || 0
+        if (shareAmount > 0) {
+          balanceMap[pId].totalShare = round2(balanceMap[pId].totalShare + shareAmount)
+        }
       }
     })
   })
@@ -111,26 +206,45 @@ export const calculateParticipantBalances = (participants = [], expenses = [], s
   // Calculate settlements
   settlements.forEach((st) => {
     const amount = Number(st.amount) || 0
-    if (balanceMap[st.from]) {
+    if (amount <= 0) return
+
+    if (st.from && balanceMap[st.from]) {
       balanceMap[st.from].settlementsPaid = round2(balanceMap[st.from].settlementsPaid + amount)
     }
-    if (balanceMap[st.to]) {
+    if (st.to && balanceMap[st.to]) {
       balanceMap[st.to].settlementsReceived = round2(balanceMap[st.to].settlementsReceived + amount)
     }
   })
 
   // Compute final net balances
   return Object.values(balanceMap).map((record) => {
-    const rawNetBalance = round2(record.totalPaid - record.totalShare)
-    // When from pays to:
-    // from's net balance increases (they paid their debt)
-    // to's net balance decreases (they collected their credit)
-    const netBalance = round2((record.totalPaid + record.settlementsPaid) - (record.totalShare + record.settlementsReceived))
+    let rawNetBalance = round2(record.totalPaid - record.totalShare)
+
+    // Expected behavior: If a participant has paid ₹0 and shared/owed ₹0 across all shared expenses,
+    // their net balance MUST be exactly ₹0.00. They must not owe anyone anything and must not be
+    // transformed into an artificial debtor by rogue or mistaken settlements.
+    let netBalance = 0
+    if (record.totalPaid === 0 && record.totalShare === 0) {
+      netBalance = 0
+    } else {
+      netBalance = round2(
+        (record.totalPaid + record.settlementsPaid) -
+        (record.totalShare + record.settlementsReceived)
+      )
+    }
+
+    // Floating point threshold normalization: clamp values within 1 cent to 0.00
+    if (Math.abs(netBalance) < 0.01) {
+      netBalance = 0
+    }
+    if (Math.abs(rawNetBalance) < 0.01) {
+      rawNetBalance = 0
+    }
 
     return {
       ...record,
-      rawNetBalance,
-      netBalance,
+      rawNetBalance: Object.is(rawNetBalance, -0) ? 0 : rawNetBalance,
+      netBalance: Object.is(netBalance, -0) ? 0 : netBalance,
     }
   })
 }
@@ -141,11 +255,15 @@ export const calculateParticipantBalances = (participants = [], expenses = [], s
  * @returns {Array<{ from: string, fromName: string, to: string, toName: string, amount: number }>}
  */
 export const calculateSimplifiedDebts = (balances = []) => {
-  // Separate into debtors (netBalance < 0) and creditors (netBalance > 0)
+  // Separate into debtors (netBalance < -0.01) and creditors (netBalance > 0.01)
+  // Strictly exclude anyone with zero net balance or zero involvement
   const debtors = []
   const creditors = []
 
   balances.forEach((b) => {
+    // Exclude zero-involvement participants explicitly
+    if (b.totalPaid === 0 && b.totalShare === 0) return
+
     const net = round2(b.netBalance)
     if (net < -0.01) {
       debtors.push({ id: b.id, name: b.name, owed: Math.abs(net) })
@@ -169,7 +287,7 @@ export const calculateSimplifiedDebts = (balances = []) => {
 
     const transfer = round2(Math.min(debtor.owed, creditor.toReceive))
 
-    if (transfer > 0) {
+    if (transfer > 0.009) {
       transactions.push({
         from: debtor.id,
         fromName: debtor.name,
@@ -215,15 +333,18 @@ export const calculateUserSettlementSummary = (simplifiedDebts = [], currentUser
 
   const totalOwed = round2(debtsToPay.reduce((sum, d) => sum + d.amount, 0))
   const totalToReceive = round2(debtsToReceive.reduce((sum, d) => sum + d.amount, 0))
-  const netUserBalance = round2(totalToReceive - totalOwed)
+  let netUserBalance = round2(totalToReceive - totalOwed)
+  if (Math.abs(netUserBalance) < 0.01) {
+    netUserBalance = 0
+  }
   const isSettled = totalOwed < 0.01 && totalToReceive < 0.01
 
   return {
     debtsToPay,
     debtsToReceive,
-    totalOwed,
-    totalToReceive,
-    netUserBalance,
+    totalOwed: Object.is(totalOwed, -0) ? 0 : totalOwed,
+    totalToReceive: Object.is(totalToReceive, -0) ? 0 : totalToReceive,
+    netUserBalance: Object.is(netUserBalance, -0) ? 0 : netUserBalance,
     isSettled,
   }
 }

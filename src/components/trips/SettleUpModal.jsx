@@ -5,7 +5,15 @@ import toast from 'react-hot-toast'
 import { useTripContext } from '../../context/TripContext.jsx'
 import { formatCurrency } from '../../utils/currency.js'
 
-export default function SettleUpModal({ open, onClose, trip, participants = [], initialSettlement }) {
+export default function SettleUpModal({
+  open,
+  onClose,
+  trip,
+  participants = [],
+  balances = [],
+  simplifiedDebts = [],
+  initialSettlement,
+}) {
   const { addSettlement } = useTripContext()
 
   const [from, setFrom] = useState('')
@@ -25,15 +33,36 @@ export default function SettleUpModal({ open, onClose, trip, participants = [], 
         setNotes(initialSettlement.notes || 'Direct payment / settled')
       } else {
         const meParticipant = participants.find((p) => p.isCurrentUser)
-        const otherParticipant = participants.find((p) => !p.isCurrentUser)
-        setFrom(meParticipant?.id || participants[0]?.id || '')
-        setTo(otherParticipant?.id || participants[1]?.id || '')
-        setAmount('')
+        const myDebt = simplifiedDebts.find((d) => d.from === meParticipant?.id)
+        const myCredit = simplifiedDebts.find((d) => d.to === meParticipant?.id)
+        const firstDebt = simplifiedDebts[0]
+
+        if (myDebt) {
+          setFrom(myDebt.from)
+          setTo(myDebt.to)
+          setAmount(String(myDebt.amount || ''))
+          setNotes(`Settling balance with ${myDebt.toName}`)
+        } else if (myCredit) {
+          setFrom(myCredit.from)
+          setTo(myCredit.to)
+          setAmount(String(myCredit.amount || ''))
+          setNotes(`Payment received from ${myCredit.fromName}`)
+        } else if (firstDebt) {
+          setFrom(firstDebt.from)
+          setTo(firstDebt.to)
+          setAmount(String(firstDebt.amount || ''))
+          setNotes(`Settling debt from ${firstDebt.fromName} to ${firstDebt.toName}`)
+        } else {
+          const otherParticipant = participants.find((p) => !p.isCurrentUser)
+          setFrom(meParticipant?.id || participants[0]?.id || '')
+          setTo(otherParticipant?.id || participants[1]?.id || '')
+          setAmount('')
+          setNotes('Settled')
+        }
         setDate(new Date().toISOString().slice(0, 10))
-        setNotes('Settled')
       }
     }
-  }, [open, trip, initialSettlement, participants])
+  }, [open, trip, initialSettlement, participants, simplifiedDebts])
 
   const fromParticipant = participants.find((p) => p.id === from)
   const toParticipant = participants.find((p) => p.id === to)
@@ -156,11 +185,24 @@ export default function SettleUpModal({ open, onClose, trip, participants = [], 
                   onChange={(e) => setFrom(e.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-800 shadow-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
                 >
-                  {participants.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} {p.isCurrentUser ? '(Me)' : ''}
-                    </option>
-                  ))}
+                  {participants.map((p) => {
+                    const b = balances.find((bal) => bal.id === p.id)
+                    let statusLabel = ''
+                    if (b) {
+                      if (b.netBalance > 0.01) {
+                        statusLabel = ` (Creditor: +${formatCurrency(b.netBalance, trip?.currency || 'INR')})`
+                      } else if (b.netBalance < -0.01) {
+                        statusLabel = ` (Debtor: ${formatCurrency(b.netBalance, trip?.currency || 'INR')})`
+                      } else {
+                        statusLabel = ' (Settled)'
+                      }
+                    }
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.isCurrentUser ? '(Me)' : ''}{statusLabel}
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
 
@@ -174,11 +216,24 @@ export default function SettleUpModal({ open, onClose, trip, participants = [], 
                   onChange={(e) => setTo(e.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-800 shadow-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
                 >
-                  {participants.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} {p.isCurrentUser ? '(Me)' : ''}
-                    </option>
-                  ))}
+                  {participants.map((p) => {
+                    const b = balances.find((bal) => bal.id === p.id)
+                    let statusLabel = ''
+                    if (b) {
+                      if (b.netBalance > 0.01) {
+                        statusLabel = ` (Creditor: +${formatCurrency(b.netBalance, trip?.currency || 'INR')})`
+                      } else if (b.netBalance < -0.01) {
+                        statusLabel = ` (Debtor: ${formatCurrency(b.netBalance, trip?.currency || 'INR')})`
+                      } else {
+                        statusLabel = ' (Settled)'
+                      }
+                    }
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.isCurrentUser ? '(Me)' : ''}{statusLabel}
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
             </div>

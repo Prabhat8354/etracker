@@ -3,7 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, DollarSign, Calendar, Users, FileText, Check, AlertCircle, Percent, Tag } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useTripContext } from '../../context/TripContext.jsx'
-import { calculateEqualShares, validateCustomShares, round2 } from '../../services/tripSettlementEngine.js'
+import {
+  calculateEqualShares,
+  validateCustomShares,
+  round2,
+  getExpenseSharesAndParticipants,
+} from '../../services/tripSettlementEngine.js'
 import { formatCurrency } from '../../utils/currency.js'
 
 const currencyOptions = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'AED', 'SAR', 'SGD']
@@ -29,15 +34,18 @@ export default function AddTripExpenseModal({ open, onClose, trip, participants 
   useEffect(() => {
     if (open && trip) {
       if (initialExpense) {
+        const { participantIds, sharesMap } = getExpenseSharesAndParticipants(initialExpense)
         setDescription(initialExpense.description || '')
         setAmount(String(initialExpense.amount || ''))
         setCurrency(initialExpense.currency || trip.currency || 'INR')
         setCategory(initialExpense.category || 'Food')
         setDate(initialExpense.date || new Date().toISOString().slice(0, 10))
         setPaidBy(initialExpense.paidBy || '')
-        setSelectedParticipants(initialExpense.participants || [])
+        setSelectedParticipants(
+          participantIds.length > 0 ? participantIds : initialExpense.participants || []
+        )
         setSplitType(initialExpense.splitType || 'equal')
-        setCustomShares(initialExpense.shares || initialExpense.customSplits || {})
+        setCustomShares(Object.keys(sharesMap).length > 0 ? sharesMap : initialExpense.customSplits || {})
         setNotes(initialExpense.notes || '')
       } else {
         setDescription('')
@@ -144,6 +152,10 @@ export default function AddTripExpenseModal({ open, onClose, trip, participants 
         splitType,
         participants: selectedParticipants,
         shares: finalShares,
+        sharesList: selectedParticipants.map((id) => ({
+          userId: id,
+          amount: finalShares[id] || 0,
+        })),
         customSplits: splitType === 'custom' ? finalShares : {},
         date,
         notes,

@@ -34,6 +34,7 @@ import {
   calculateSimplifiedDebts,
   calculateUserSettlementSummary,
   calculateTripTotals,
+  getExpenseSharesAndParticipants,
   round2,
 } from '../services/tripSettlementEngine.js'
 import { formatCurrency } from '../utils/currency.js'
@@ -397,14 +398,14 @@ export default function TripDetails() {
             }`}
           >
             {(myBalanceRecord?.netBalance || 0) > 0.01 ? '+' : ''}
-            {formatCurrency(myBalanceRecord?.netBalance || 0, currency)}
+            {formatCurrency(Math.abs(myBalanceRecord?.netBalance || 0) < 0.01 ? 0 : myBalanceRecord?.netBalance, currency)}
           </h3>
           <p className="mt-1 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
             {(myBalanceRecord?.netBalance || 0) > 0.01
               ? 'You should receive money'
               : (myBalanceRecord?.netBalance || 0) < -0.01
               ? 'You owe group money'
-              : 'All settled up! ✓'}
+              : "You're all settled"}
           </p>
         </div>
       </div>
@@ -421,7 +422,7 @@ export default function TripDetails() {
             </div>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               {userSettlementSummary.isSettled ? (
-                'You have no pending payments. Everything is balanced! ✓'
+                "You're all settled. Everything is balanced! ✓"
               ) : userSettlementSummary.totalOwed > 0 ? (
                 <span>
                   You owe a total of{' '}
@@ -443,7 +444,7 @@ export default function TripDetails() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {userSettlementSummary.debtsToPay.map((debt, idx) => (
+            {!userSettlementSummary.isSettled && userSettlementSummary.debtsToPay.map((debt, idx) => (
               <button
                 key={idx}
                 type="button"
@@ -455,7 +456,7 @@ export default function TripDetails() {
               </button>
             ))}
 
-            {userSettlementSummary.debtsToReceive.map((debt, idx) => (
+            {!userSettlementSummary.isSettled && userSettlementSummary.debtsToReceive.map((debt, idx) => (
               <button
                 key={idx}
                 type="button"
@@ -625,23 +626,26 @@ export default function TripDetails() {
                         {/* Sharing Members tags */}
                         <div className="mt-2 flex flex-wrap items-center gap-1">
                           <span className="text-[10px] text-slate-400 mr-1">Shared by:</span>
-                          {exp.participants?.map((pId) => {
-                            const p = members.find((part) => part.id === pId)
-                            const share = exp.shares?.[pId]
-                            return (
-                              <span
-                                key={pId}
-                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-bold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
-                              >
-                                {p?.name || 'Member'} {p?.isCurrentUser ? '(Me)' : ''}
-                                {share !== undefined && (
-                                  <span className="text-indigo-500 font-extrabold">
-                                    ({formatCurrency(share, exp.currency || currency)})
-                                  </span>
-                                )}
-                              </span>
-                            )
-                          })}
+                          {(() => {
+                            const { participantIds, sharesMap } = getExpenseSharesAndParticipants(exp)
+                            return participantIds.map((pId) => {
+                              const p = members.find((part) => part.id === pId)
+                              const share = sharesMap[pId]
+                              return (
+                                <span
+                                  key={pId}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-bold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+                                >
+                                  {p?.name || 'Member'} {p?.isCurrentUser ? '(Me)' : ''}
+                                  {share !== undefined && (
+                                    <span className="text-indigo-500 font-extrabold">
+                                      ({formatCurrency(share, exp.currency || currency)})
+                                    </span>
+                                  )}
+                                </span>
+                              )
+                            })
+                          })()}
                         </div>
 
                         {exp.notes && (
@@ -714,14 +718,16 @@ export default function TripDetails() {
               </span>
             </div>
 
-            {simplifiedDebts.length === 0 ? (
+            {simplifiedDebts.filter((d) => d.amount > 0.01).length === 0 ? (
               <div className="py-6 text-center text-xs font-semibold text-emerald-500 flex items-center justify-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
                 <span>Everyone is completely settled up! No transfers needed.</span>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {simplifiedDebts.map((debt, idx) => (
+                {simplifiedDebts
+                  .filter((debt) => debt.amount > 0.01)
+                  .map((debt, idx) => (
                   <div
                     key={idx}
                     className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/50 bg-slate-50/50 dark:border-white/[0.03] dark:bg-slate-900/30 gap-3"
@@ -798,7 +804,7 @@ export default function TripDetails() {
                           }`}
                         >
                           {b.netBalance > 0.01 ? '+' : ''}
-                          {formatCurrency(b.netBalance, currency)}
+                          {formatCurrency(Math.abs(b.netBalance || 0) < 0.01 ? 0 : b.netBalance, currency)}
                         </span>
                       </td>
                     </tr>
@@ -1038,6 +1044,8 @@ export default function TripDetails() {
         }}
         trip={currentTrip}
         participants={members}
+        balances={participantBalances}
+        simplifiedDebts={simplifiedDebts}
         initialSettlement={prefilledSettlement}
       />
 
