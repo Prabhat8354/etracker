@@ -4,19 +4,7 @@ import { X, Calendar, MapPin, DollarSign, Users, Plus, Navigation } from 'lucide
 import toast from 'react-hot-toast'
 import { useTripContext } from '../../context/TripContext.jsx'
 import { useExpenseContext } from '../../context/ExpenseContext.jsx'
-
-const supportedCurrencies = [
-  { code: 'INR', symbol: '₹', label: 'INR (₹) Indian Rupee' },
-  { code: 'USD', symbol: '$', label: 'USD ($) US Dollar' },
-  { code: 'EUR', symbol: '€', label: 'EUR (€) Euro' },
-  { code: 'GBP', symbol: '£', label: 'GBP (£) British Pound' },
-  { code: 'JPY', symbol: '¥', label: 'JPY (¥) Japanese Yen' },
-  { code: 'CAD', symbol: 'C$', label: 'CAD (C$) Canadian Dollar' },
-  { code: 'AUD', symbol: 'A$', label: 'AUD (A$) Australian Dollar' },
-  { code: 'AED', symbol: 'AED', label: 'AED UAE Dirham' },
-  { code: 'SAR', symbol: 'SR', label: 'SAR Saudi Riyal' },
-  { code: 'SGD', symbol: 'S$', label: 'SGD (S$) Singapore Dollar' },
-]
+import { SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '../../utils/currency.js'
 
 export default function CreateTripModal({ open, onClose, initialTrip }) {
   const { createTrip, updateTrip } = useTripContext()
@@ -216,7 +204,7 @@ export default function CreateTripModal({ open, onClose, initialTrip }) {
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-800 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
               >
-                {supportedCurrencies.map((c) => (
+                {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>
                     {c.label}
                   </option>

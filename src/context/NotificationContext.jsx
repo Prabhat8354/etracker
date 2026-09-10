@@ -12,6 +12,7 @@ import {
   getNotificationStatus
 } from '../services/notificationService.js'
 import { loadFromStorage, saveToStorage, parseLocalDate, formatCurrency } from '../utils/helpers.jsx'
+import { DEFAULT_CURRENCY } from '../utils/currency.js'
 
 const NotificationContext = createContext(null)
 
@@ -360,7 +361,7 @@ export function NotificationProvider({ children }) {
     if (!notificationSettings.enabled || !notificationSettings.transactionAlerts) return
     if (permission !== 'granted') return
 
-    const currencySymbol = transaction.currency || expenseSettings?.currency || 'USD'
+    const currencySymbol = transaction.currency || expenseSettings?.currency || DEFAULT_CURRENCY
     const sign = transaction.type === 'income' ? '+' : '-'
     const formatted = formatCurrency(transaction.amount, currencySymbol)
     const title = transaction.type === 'income' ? 'Income Logged' : 'Expense Logged'
@@ -447,7 +448,7 @@ export function NotificationProvider({ children }) {
 
         let title = 'Upcoming Bill Reminder'
         let message = ''
-        const formattedAmount = formatCurrency(bill.amount, expenseSettings?.currency || 'USD')
+        const formattedAmount = formatCurrency(bill.amount, bill.currency || expenseSettings?.currency || DEFAULT_CURRENCY)
 
         if (daysLeft < 0) {
           title = 'Overdue Bill Alert'
@@ -503,7 +504,7 @@ export function NotificationProvider({ children }) {
       saveToStorage(storageKey, storedNotified)
 
       const title = 'Savings Target Reached! 🎉'
-      const message = `Outstanding job! You hit your ${period} savings goal of ${formatCurrency(savingsGoal.amount, savingsGoal.currency || expenseSettings?.currency || 'USD')}!`
+      const message = `Outstanding job! You hit your ${period} savings goal of ${formatCurrency(savingsGoal.amount, savingsGoal.currency || expenseSettings?.currency || DEFAULT_CURRENCY)}!`
 
       sendBrowserNotification(title, {
         body: message,

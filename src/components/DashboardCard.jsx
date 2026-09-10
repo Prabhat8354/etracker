@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
+import { DEFAULT_CURRENCY } from '../utils/currency.js'
 
 function AnimatedCounter({ value, currency }) {
   const [displayValue, setDisplayValue] = useState(0)
@@ -42,7 +43,7 @@ function AnimatedCounter({ value, currency }) {
 
   const formatted = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency || 'USD',
+    currency: currency || DEFAULT_CURRENCY,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(displayValue)
@@ -52,7 +53,7 @@ function AnimatedCounter({ value, currency }) {
 
 function DashboardCard({ label, value, percentage, icon, gradient }) {
   const { settings } = useExpenseContext()
-  const currency = settings?.currency || 'USD'
+  const currency = settings?.currency || DEFAULT_CURRENCY
   const isPositive = !percentage.startsWith('-')
 
   return (

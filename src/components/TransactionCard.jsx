@@ -14,6 +14,7 @@ import {
   Tag
 } from 'lucide-react'
 import { formatCurrency, formatDate, getCategoryColor } from '../utils/helpers.jsx'
+import { DEFAULT_CURRENCY, canConvert } from '../utils/currency.js'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import DeleteModal from './DeleteModal.jsx'
 import TransactionModal from './AddTransactionModal.jsx'
@@ -31,12 +32,12 @@ const categoryIcons = {
 }
 
 function TransactionCard({ transaction, compact }) {
-  const { deleteTransaction, settings, convertCurrency } = useExpenseContext()
+  const { deleteTransaction, settings, convertCurrency, rates } = useExpenseContext()
   const [showDelete, setShowDelete] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   
-  const currency = settings?.currency || 'USD'
-  const txCurrency = transaction.currency || 'USD'
+  const currency = settings?.currency || DEFAULT_CURRENCY
+  const txCurrency = transaction.currency || DEFAULT_CURRENCY
   const IconComponent = categoryIcons[transaction.category] || Tag
 
   return (
@@ -74,7 +75,7 @@ function TransactionCard({ transaction, compact }) {
                 }`}>
                   {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, txCurrency)}
                 </span>
-                {txCurrency !== currency && (
+                {txCurrency !== currency && canConvert(txCurrency, currency, rates) && (
                   <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
                     ≈ {formatCurrency(convertCurrency(transaction.amount, txCurrency, currency), currency)}
                   </span>

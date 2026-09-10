@@ -22,10 +22,11 @@ import AIInsights from "../components/AIInsights.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { Sparkles, Landmark, Calendar, Award, Zap } from "lucide-react";
 import { parseLocalDate } from "../utils/helpers.jsx";
+import { DEFAULT_CURRENCY } from "../utils/currency.js";
 
 const colors = ['#6366f1', '#10b981', '#f43f5e', '#0ea5e9', '#f59e0b', '#8b5cf6', '#f97316']
 
-const CustomTooltip = ({ active, payload, label, currency = 'USD' }) => {
+const CustomTooltip = ({ active, payload, label, currency = DEFAULT_CURRENCY }) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-xl border border-slate-200/30 bg-white/90 p-3.5 shadow-xl backdrop-blur-md dark:border-white/[0.04] dark:bg-slate-950/90 text-left">
@@ -33,36 +34,36 @@ const CustomTooltip = ({ active, payload, label, currency = 'USD' }) => {
         <div className="space-y-1">
           {payload.map((entry, idx) => (
             <div key={idx} className="flex items-center gap-5 justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: entry.stroke || entry.fill }} />
-                {entry.name}
-              </span>
-              <span className="text-xs font-extrabold text-slate-800 dark:text-white">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color || entry.fill }} />
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{entry.name}:</span>
+              </div>
+              <span className="text-[11px] font-black text-slate-900 dark:text-white">
                 {new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(entry.value)}
               </span>
             </div>
           ))}
         </div>
       </div>
-    )
+    );
   }
-  return null
-}
+  return null;
+};
 
 function Analytics() {
   const { transactions, summary, isLoading, settings, rates, convertCurrency, savingsGoal } = useExpenseContext()
-  const currency = settings?.currency || 'USD'
+  const currency = settings?.currency || DEFAULT_CURRENCY
 
   const expenseByCategory = useMemo(() => {
     const totals = {}
     transactions.filter((item) => item.type === 'expense').forEach((item) => {
-      const amt = convertCurrency(item.amount, item.currency || 'USD', settings.currency)
+      const amt = convertCurrency(item.amount, item.currency || DEFAULT_CURRENCY, currency)
       totals[item.category] = (totals[item.category] || 0) + amt
     })
     return Object.entries(totals)
       .map(([category, value]) => ({ category, value }))
       .sort((a, b) => b.value - a.value)
-  }, [transactions, settings.currency, rates])
+  }, [transactions, currency, rates])
 
   const monthlyTotals = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -72,13 +73,13 @@ function Analytics() {
       const month = months[date.getMonth()]
       const entry = values.find((value) => value.month === month)
       if (entry) {
-        const amt = convertCurrency(item.amount, item.currency || 'USD', settings.currency)
+        const amt = convertCurrency(item.amount, item.currency || DEFAULT_CURRENCY, currency)
         if (item.type === 'expense') entry.expense += amt
         else entry.income += amt
       }
     })
     return values
-  }, [transactions, settings.currency, rates])
+  }, [transactions, currency, rates])
 
   // Savings Goal & Analytics calculations
   const savingsAnalytics = useMemo(() => {
@@ -91,7 +92,7 @@ function Analytics() {
 
     transactions.forEach(t => {
       const month = months[parseLocalDate(t.date).getMonth()]
-      const amt = convertCurrency(t.amount, t.currency || 'USD', settings.currency)
+      const amt = convertCurrency(t.amount, t.currency || DEFAULT_CURRENCY, currency)
       if (t.type === 'income') {
         monthlyNet[month] += amt
       } else {
@@ -111,17 +112,17 @@ function Analytics() {
     const avgSavings = totalSavings / activeMonths
     const weeklySavings = avgSavings / 4
     
-    const goal = convertCurrency(savingsGoal.amount, savingsGoal.currency || 'USD', settings.currency)
+    const goal = convertCurrency(savingsGoal.amount, savingsGoal.currency || DEFAULT_CURRENCY, currency)
     const goalCompletionRate = Math.min(100, Math.round((totalSavings / goal) * 100))
 
     return {
       monthlyNetConverted,
-      highestMonth: highest && highest.savings > 0 ? `${highest.month} (${new Intl.NumberFormat('en-US', { style: 'currency', currency: settings.currency, maximumFractionDigits: 0 }).format(highest.savings)})` : 'None',
+      highestMonth: highest && highest.savings > 0 ? `${highest.month} (${new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(highest.savings)})` : 'None',
       avgSavings,
       weeklySavings,
       goalCompletionRate
     }
-  }, [transactions, rates, settings.currency, summary.savings, savingsGoal])
+  }, [transactions, rates, currency, summary.savings, savingsGoal])
 
   if (isLoading) return <EmptyState loading />
 
@@ -286,7 +287,7 @@ function Analytics() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Average Savings</p>
             </div>
             <p className="mt-3.5 text-2xl font-extrabold text-slate-800 dark:text-white">
-              {new Intl.NumberFormat('en-US', { style: 'currency', currency: settings.currency }).format(savingsAnalytics.avgSavings)}
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(savingsAnalytics.avgSavings)}
             </p>
             <p className="mt-1 text-[10px] font-bold text-slate-400 dark:text-slate-500">Calculated per active month.</p>
           </motion.div>
@@ -303,7 +304,7 @@ function Analytics() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Weekly Savings</p>
             </div>
             <p className="mt-3.5 text-2xl font-extrabold text-slate-800 dark:text-white">
-              {new Intl.NumberFormat('en-US', { style: 'currency', currency: settings.currency }).format(savingsAnalytics.weeklySavings)}
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(savingsAnalytics.weeklySavings)}
             </p>
             <p className="mt-1 text-[10px] font-bold text-slate-400 dark:text-slate-500">Average weekly savings flow.</p>
           </motion.div>

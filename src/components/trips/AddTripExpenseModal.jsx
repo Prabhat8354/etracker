@@ -9,9 +9,9 @@ import {
   round2,
   getExpenseSharesAndParticipants,
 } from '../../services/tripSettlementEngine.js'
-import { formatCurrency } from '../../utils/currency.js'
+import { formatCurrency, SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '../../utils/currency.js'
 
-const currencyOptions = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'AED', 'SAR', 'SGD']
+const currencyOptions = SUPPORTED_CURRENCIES.map((c) => c.code)
 const categoryOptions = ['Food', 'Stay', 'Travel', 'Activity', 'Shopping', 'Other']
 
 export default function AddTripExpenseModal({ open, onClose, trip, participants = [], initialExpense }) {
@@ -20,7 +20,7 @@ export default function AddTripExpenseModal({ open, onClose, trip, participants 
 
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState(trip?.currency || 'INR')
+  const [currency, setCurrency] = useState(trip?.currency || DEFAULT_CURRENCY)
   const [category, setCategory] = useState('Food')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [paidBy, setPaidBy] = useState('')
@@ -37,7 +37,7 @@ export default function AddTripExpenseModal({ open, onClose, trip, participants 
         const { participantIds, sharesMap } = getExpenseSharesAndParticipants(initialExpense)
         setDescription(initialExpense.description || '')
         setAmount(String(initialExpense.amount || ''))
-        setCurrency(initialExpense.currency || trip.currency || 'INR')
+        setCurrency(initialExpense.currency || trip.currency || DEFAULT_CURRENCY)
         setCategory(initialExpense.category || 'Food')
         setDate(initialExpense.date || new Date().toISOString().slice(0, 10))
         setPaidBy(initialExpense.paidBy || '')
@@ -50,7 +50,7 @@ export default function AddTripExpenseModal({ open, onClose, trip, participants 
       } else {
         setDescription('')
         setAmount('')
-        setCurrency(trip.currency || 'INR')
+        setCurrency(trip.currency || DEFAULT_CURRENCY)
         setCategory('Food')
         setDate(new Date().toISOString().slice(0, 10))
         // Default paidBy to current user if available, otherwise first participant

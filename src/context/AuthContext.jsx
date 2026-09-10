@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { auth, db } from '../firebase/firebaseConfig.js'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { DEFAULT_CURRENCY } from '../utils/currency.js'
 import {
   browserLocalPersistence,
   browserSessionPersistence,
@@ -32,25 +33,24 @@ export function AuthProvider({ children }) {
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const userData = {
-          uid: firebaseUser.uid,
-          email: (firebaseUser.email || '').toLowerCase(),
-          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-          photoURL: firebaseUser.photoURL || null,
-          createdAt: firebaseUser.metadata?.creationTime || null,
-        }
-        setUser(userData)
+        let userCurrency = null
 
         // Sync to Firestore users collection for friend/email lookup
         if (db) {
           try {
+            const userDocRef = doc(db, 'users', firebaseUser.uid)
+            const userDocSnap = await getDoc(userDocRef)
+            if (userDocSnap.exists() && userDocSnap.data()?.currency) {
+              userCurrency = userDocSnap.data().currency
+            }
+
             await setDoc(
-              doc(db, 'users', firebaseUser.uid),
+              userDocRef,
               {
                 uid: firebaseUser.uid,
                 email: (firebaseUser.email || '').toLowerCase(),
-                displayName: userData.displayName,
-                photoURL: userData.photoURL,
+                displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                photoURL: firebaseUser.photoURL || null,
                 updatedAt: serverTimestamp(),
               },
               { merge: true }
@@ -59,6 +59,16 @@ export function AuthProvider({ children }) {
             console.error('Failed to sync profile to Firestore:', err)
           }
         }
+
+        const userData = {
+          uid: firebaseUser.uid,
+          email: (firebaseUser.email || '').toLowerCase(),
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          photoURL: firebaseUser.photoURL || null,
+          currency: userCurrency,
+          createdAt: firebaseUser.metadata?.creationTime || null,
+        }
+        setUser(userData)
       } else {
         setUser(null)
       }
@@ -68,7 +78,7 @@ export function AuthProvider({ children }) {
     return () => unsubscribe()
   }, [])
 
-  const signUp = async ({ name, email, password }) => {
+  const signUp = async ({ name, email, password, currency = DEFAULT_CURRENCY }) => {
     setAuthLoading(true)
     try {
       if (!auth) {
@@ -76,12 +86,75 @@ export function AuthProvider({ children }) {
       }
       await setPersistence(auth, browserLocalPersistence)
       const result = await createUserWithEmailAndPassword(auth, email, password)
+      const chosenCurrency = currency || DEFAULT_CURRENCY
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { displayName: name })
         setUser((prev) => ({
           ...prev,
           displayName: name,
+          currency: chosenCurrency,
         }))
+
+        // Save selected currency directly to Firestore user profile & settings
+        if (db) {
+          const uid = auth.currentUser.uid
+          try {
+            // 1. users/{uid} profile
+            await setDoc(
+              doc(db, 'users', uid),
+              {
+                uid,
+                email: (email || '').toLowerCase(),
+                displayName: name,
+                photoURL: null,
+                currency: chosenCurrency,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true }
+            )
+
+            // 2. users/{uid}/settings/config
+            await setDoc(
+              doc(db, 'users', uid, 'settings', 'config'),
+              {
+                currency: chosenCurrency,
+                monthlyBudget: 3000,
+                language: 'en',
+                animationSpeed: 'normal'
+              },
+              { merge: true }
+            )
+
+            // 3. users/{uid}/savings/goal
+            await setDoc(
+              doc(db, 'users', uid, 'savings', 'goal'),
+              {
+                amount: 500,
+                frequency: 'monthly',
+                currency: chosenCurrency
+              },
+              { merge: true }
+            )
+          } catch (err) {
+            console.error('Failed to initialize user profile/settings in Firestore:', err)
+          }
+
+          // Pre-populate localStorage for immediate reactivity
+          try {
+            localStorage.setItem(
+              `etracker_${uid}_settings`,
+              JSON.stringify({
+                currency: chosenCurrency,
+                monthlyBudget: 3000,
+                language: 'en',
+                animationSpeed: 'normal'
+              })
+            )
+          } catch (e) {
+            console.error('LocalStorage write failed:', e)
+          }
+        }
       }
       toast.success('Account created successfully')
       setAuthError(null)

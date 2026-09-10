@@ -4,8 +4,8 @@ import { sampleCategories } from '../data/sampleData.jsx'
 import { calculateSummary, generateGreeting, loadFromStorage, saveToStorage, parseLocalDate } from '../utils/helpers.jsx'
 import { useAuthContext } from './AuthContext.jsx'
 import { db } from '../firebase/firebaseConfig.js'
-import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
-import { convertCurrency as _convertCurrency } from '../utils/currency.js'
+import { collection, doc, getDoc, setDoc, deleteDoc, updateDoc, onSnapshot, query, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
+import { convertCurrency as _convertCurrency, DEFAULT_CURRENCY, canConvert } from '../utils/currency.js'
 
 const ExpenseContext = createContext(null)
 
@@ -41,7 +41,7 @@ export function ExpenseProvider({ children }) {
   const [savingsGoal, setSavingsGoal] = useState({
     amount: 500,
     frequency: 'monthly',
-    currency: 'USD'
+    currency: DEFAULT_CURRENCY
   })
   const [darkMode, setDarkMode] = useState(() => {
     try {
@@ -52,11 +52,12 @@ export function ExpenseProvider({ children }) {
   })
   const [filters, setFilters] = useState({ type: 'all', category: 'all', sort: 'newest', query: '', range: 'all' })
   const [settings, setSettings] = useState({
-    currency: 'USD',
+    currency: DEFAULT_CURRENCY,
     monthlyBudget: 3000,
     language: 'en',
     animationSpeed: 'normal'
   })
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [rates, setRates] = useState(() => loadFromStorage('etracker_exchange_rates') ?? defaultRates)
 
@@ -164,11 +165,12 @@ export function ExpenseProvider({ children }) {
     if (!user) {
       setFilters({ type: 'all', category: 'all', sort: 'newest', query: '', range: 'all' })
       setSettings({
-        currency: 'USD',
+        currency: DEFAULT_CURRENCY,
         monthlyBudget: 3000,
         language: 'en',
         animationSpeed: 'normal'
       })
+      setIsSettingsLoaded(false)
       return
     }
 
@@ -177,7 +179,10 @@ export function ExpenseProvider({ children }) {
 
     if (!db) {
       const storedSettings = loadFromStorage(userStorageKey(user.uid, 'settings'))
-      if (storedSettings) setSettings(storedSettings)
+      if (storedSettings) {
+        setSettings(storedSettings)
+      }
+      setIsSettingsLoaded(true)
       return
     }
 
@@ -186,35 +191,72 @@ export function ExpenseProvider({ children }) {
     const unsubscribe = onSnapshot(docRef, async (docSnap) => {
       if (docSnap.exists()) {
         const remoteSettings = docSnap.data()
+        let resolvedCurrency = remoteSettings.currency
+        // If existing settings doc had no currency field, check user profile doc or fallback to INR
+        if (!resolvedCurrency) {
+          try {
+            const userSnap = await getDoc(doc(db, 'users', user.uid))
+            resolvedCurrency = userSnap.exists() && userSnap.data()?.currency ? userSnap.data().currency : DEFAULT_CURRENCY
+          } catch {
+            resolvedCurrency = DEFAULT_CURRENCY
+          }
+        }
+
+        const mergedSettings = {
+          monthlyBudget: 3000,
+          language: 'en',
+          animationSpeed: 'normal',
+          ...remoteSettings,
+          currency: resolvedCurrency
+        }
+
         setSettings((prev) => {
-          const keys = Object.keys(remoteSettings)
-          const isDifferent = keys.some(key => prev[key] !== remoteSettings[key])
-          return isDifferent ? remoteSettings : prev
+          const keys = Object.keys(mergedSettings)
+          const isDifferent = keys.some((key) => prev[key] !== mergedSettings[key])
+          return isDifferent ? mergedSettings : prev
         })
+        saveToStorage(userStorageKey(user.uid, 'settings'), mergedSettings)
+        setIsSettingsLoaded(true)
       } else {
-        // If not in Firestore yet, read localStorage settings or defaults, then push to Firestore
-        const storedSettings = loadFromStorage(userStorageKey(user.uid, 'settings')) || {
-          currency: 'USD',
+        // If not in Firestore yet, read user profile doc (users/{uid}) or localStorage settings or defaults
+        let chosenCurrency = null
+        try {
+          const userSnap = await getDoc(doc(db, 'users', user.uid))
+          if (userSnap.exists() && userSnap.data()?.currency) {
+            chosenCurrency = userSnap.data().currency
+          }
+        } catch (err) {
+          console.error("Failed to read user profile for currency:", err)
+        }
+
+        if (!chosenCurrency) {
+          const storedSettings = loadFromStorage(userStorageKey(user.uid, 'settings'))
+          chosenCurrency = storedSettings?.currency || DEFAULT_CURRENCY
+        }
+
+        const cleanSettings = {
+          currency: chosenCurrency,
           monthlyBudget: 3000,
           language: 'en',
           animationSpeed: 'normal'
         }
-        const cleanSettings = {
-          currency: storedSettings.currency ?? 'USD',
-          monthlyBudget: storedSettings.monthlyBudget ?? 3000,
-          language: storedSettings.language ?? 'en',
-          animationSpeed: storedSettings.animationSpeed ?? 'normal'
-        }
+
         try {
-          await setDoc(docRef, cleanSettings)
+          await setDoc(docRef, cleanSettings, { merge: true })
+          await setDoc(doc(db, 'users', user.uid), { currency: chosenCurrency }, { merge: true })
           setSettings(cleanSettings)
+          saveToStorage(userStorageKey(user.uid, 'settings'), cleanSettings)
         } catch (err) {
           console.error("Failed to write default settings to Firestore:", err)
+          setSettings(cleanSettings)
+        } finally {
+          setIsSettingsLoaded(true)
         }
       }
     }, (error) => {
       console.error("Firestore settings listener failed:", error)
       toast.error("Unable to load settings configuration. Please check your Firestore security rules.")
+      setIsSettingsLoaded(true)
     })
 
     return () => unsubscribe()
@@ -315,7 +357,7 @@ export function ExpenseProvider({ children }) {
       setSavingsGoal({
         amount: 500,
         frequency: 'monthly',
-        currency: 'USD'
+        currency: DEFAULT_CURRENCY
       })
       return
     }
@@ -325,7 +367,7 @@ export function ExpenseProvider({ children }) {
       setSavingsGoal({
         amount: storedSettings.savingsGoal ?? 500,
         frequency: storedSettings.savingsGoalPeriod ?? 'monthly',
-        currency: storedSettings.currency ?? 'USD'
+        currency: storedSettings.currency ?? DEFAULT_CURRENCY
       })
       return
     }
@@ -345,10 +387,10 @@ export function ExpenseProvider({ children }) {
         const defaultGoal = {
           amount: storedSettings.savingsGoal ?? 500,
           frequency: storedSettings.savingsGoalPeriod ?? 'monthly',
-          currency: storedSettings.currency ?? 'USD'
+          currency: storedSettings.currency ?? settings.currency ?? DEFAULT_CURRENCY
         }
         try {
-          await setDoc(docRef, defaultGoal)
+          await setDoc(docRef, defaultGoal, { merge: true })
           setSavingsGoal(defaultGoal)
         } catch (err) {
           console.error("Failed to write default savings goal to Firestore:", err)
@@ -360,16 +402,17 @@ export function ExpenseProvider({ children }) {
     })
 
     return () => unsubscribe()
-  }, [authLoading, user])
+  }, [authLoading, user, settings.currency])
 
   // Save changes to localStorage and Firestore settings
   useEffect(() => {
-    if (!user || authLoading || isLoading) return
+    if (!user || authLoading || !isSettingsLoaded) return
     saveToStorage(userStorageKey(user.uid, 'filters'), filters)
 
     const saveSettingsToFirestore = async () => {
       try {
-        await setDoc(doc(db, 'users', user.uid, 'settings', 'config'), settings)
+        await setDoc(doc(db, 'users', user.uid, 'settings', 'config'), settings, { merge: true })
+        await setDoc(doc(db, 'users', user.uid), { currency: settings.currency, updatedAt: serverTimestamp() }, { merge: true })
         saveToStorage(userStorageKey(user.uid, 'settings'), settings)
       } catch (err) {
         console.error("Failed to save settings to Firestore:", err)
@@ -377,7 +420,7 @@ export function ExpenseProvider({ children }) {
       }
     }
     saveSettingsToFirestore()
-  }, [user, authLoading, isLoading, bills, filters, settings])
+  }, [user, authLoading, isSettingsLoaded, settings, filters])
 
   useEffect(() => {
     try {
@@ -462,7 +505,7 @@ export function ExpenseProvider({ children }) {
       userId: user.uid,
       title: transaction.title || '',
       amount: Number(transaction.amount) || 0,
-      currency: transaction.currency || settings.currency || 'USD',
+      currency: transaction.currency || settings.currency || DEFAULT_CURRENCY,
       category: transaction.category || 'Other',
       notes: transaction.notes || '',
       type: transaction.type || 'expense',
@@ -488,7 +531,7 @@ export function ExpenseProvider({ children }) {
     const newTx = {
       title: updatedTransaction.title || '',
       amount: Number(updatedTransaction.amount) || 0,
-      currency: updatedTransaction.currency || settings.currency || 'USD',
+      currency: updatedTransaction.currency || settings.currency || DEFAULT_CURRENCY,
       category: updatedTransaction.category || 'Other',
       notes: updatedTransaction.notes || '',
       type: updatedTransaction.type || 'expense',
@@ -650,15 +693,20 @@ export function ExpenseProvider({ children }) {
         batchPromises.push(setDoc(doc(db, 'users', user.uid, 'savings', 'goal'), {
           amount: 500,
           frequency: 'monthly',
-          currency: 'USD'
+          currency: DEFAULT_CURRENCY
         }))
 
         batchPromises.push(setDoc(doc(db, 'users', user.uid, 'settings', 'config'), {
-          currency: 'USD',
+          currency: DEFAULT_CURRENCY,
           monthlyBudget: 3000,
           language: 'en',
           animationSpeed: 'normal'
         }))
+
+        batchPromises.push(setDoc(doc(db, 'users', user.uid), {
+          currency: DEFAULT_CURRENCY,
+          updatedAt: serverTimestamp()
+        }, { merge: true }))
 
         await Promise.all(batchPromises)
       } catch (err) {
@@ -669,7 +717,7 @@ export function ExpenseProvider({ children }) {
     setBills([])
     setFilters({ type: 'all', category: 'all', sort: 'newest', query: '', range: 'all' })
     setSettings({
-      currency: 'USD',
+      currency: DEFAULT_CURRENCY,
       monthlyBudget: 3000,
       language: 'en',
       animationSpeed: 'normal'
@@ -677,7 +725,7 @@ export function ExpenseProvider({ children }) {
     setSavingsGoal({
       amount: 500,
       frequency: 'monthly',
-      currency: 'USD'
+      currency: DEFAULT_CURRENCY
     })
     setDarkMode(false)
     toast.success('All data cleared')
@@ -710,6 +758,8 @@ export function ExpenseProvider({ children }) {
         convertAmount,
         convertToUSD,
         convertCurrency,
+        canConvert: (from, to) => canConvert(from, to, rates),
+        DEFAULT_CURRENCY,
         bills,
         commitments: bills,
         setBills,

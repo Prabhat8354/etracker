@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Calendar, DollarSign, Tag, Clock } from 'lucide-react'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
+import { DEFAULT_CURRENCY } from '../utils/currency.js'
 import { v4 as uuidv4 } from 'uuid'
 import toast from 'react-hot-toast'
 
@@ -27,7 +28,7 @@ function AddBillModal({ open, onOpenChange, initialBill }) {
     }
   })
   const isEditMode = Boolean(initialBill)
-  const currency = settings?.currency || 'USD'
+  const currency = settings?.currency || DEFAULT_CURRENCY
 
   useEffect(() => {
     if (open) {

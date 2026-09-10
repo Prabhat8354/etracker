@@ -18,6 +18,7 @@ import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import AddBillModal from '../components/AddBillModal.jsx'
 import DeleteModal from '../components/DeleteModal.jsx'
 import { formatCurrency, parseLocalDate } from '../utils/helpers.jsx'
+import { DEFAULT_CURRENCY } from '../utils/currency.js'
 
 function Savings() {
   const { transactions, summary, settings, setSettings, rates, bills, deleteBill, toggleBillStatus, convertCurrency, savingsGoal, updateSavingsGoal } = useExpenseContext()
@@ -27,7 +28,7 @@ function Savings() {
 
   // Smart Savings Goal Calculations
   const period = savingsGoal.frequency || 'monthly'
-  const currency = settings.currency || 'USD'
+  const currency = settings?.currency || DEFAULT_CURRENCY
 
   // Filter transactions in the current period to calculate target savings progress
   const currentPeriodTransactions = useMemo(() => {
@@ -52,19 +53,19 @@ function Savings() {
   const periodIncome = useMemo(() => 
     currentPeriodTransactions
       .filter(t => t.type === 'income')
-      .reduce((s, t) => s + convertCurrency(t.amount, t.currency || 'USD', settings.currency), 0),
-    [currentPeriodTransactions, settings.currency, rates]
+      .reduce((s, t) => s + convertCurrency(t.amount, t.currency || DEFAULT_CURRENCY, currency), 0),
+    [currentPeriodTransactions, currency, rates]
   )
   const periodExpense = useMemo(() => 
     currentPeriodTransactions
       .filter(t => t.type === 'expense')
-      .reduce((s, t) => s + convertCurrency(t.amount, t.currency || 'USD', settings.currency), 0),
-    [currentPeriodTransactions, settings.currency, rates]
+      .reduce((s, t) => s + convertCurrency(t.amount, t.currency || DEFAULT_CURRENCY, currency), 0),
+    [currentPeriodTransactions, currency, rates]
   )
   
   // Real-time Savings = Inflow - Outflow in the selected goal period
   const currentSavings = Math.max(0, periodIncome - periodExpense)
-  const convertedGoal = convertCurrency(savingsGoal.amount, savingsGoal.currency || 'USD', settings.currency)
+  const convertedGoal = convertCurrency(savingsGoal.amount, savingsGoal.currency || DEFAULT_CURRENCY, currency)
   const savingsProgress = Math.min(100, Math.round((currentSavings / convertedGoal) * 100)) || 0
   const remainingSavings = Math.max(0, convertedGoal - currentSavings)
 
@@ -93,7 +94,7 @@ function Savings() {
     const now = new Date()
     const currentKey = `${months[now.getMonth()]} ${now.getFullYear()}`
     const rate = rates[settings.currency] || 1
-    const goalVal = convertCurrency(savingsGoal.amount, savingsGoal.currency || 'USD', settings.currency)
+    const goalVal = convertCurrency(savingsGoal.amount, savingsGoal.currency || DEFAULT_CURRENCY, settings.currency)
 
     return Object.entries(historyMap)
       .filter(([key]) => key !== currentKey)

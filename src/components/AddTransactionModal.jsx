@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, X, Type, DollarSign, Calendar, Tag, FileText } from 'lucide-react'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import { useNotificationContext } from '../context/NotificationContext.jsx'
+import { SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '../utils/currency.js'
 import { v4 as uuidv4 } from 'uuid'
 import toast from 'react-hot-toast'
 import { sampleCategories } from '../data/sampleData.jsx'
 
-const defaultTransaction = (defaultCurrency = 'USD') => ({
+const defaultTransaction = (defaultCurrency = DEFAULT_CURRENCY) => ({
   title: '',
   amount: '',
   currency: defaultCurrency,
@@ -21,17 +22,17 @@ function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initia
   const { addTransaction, updateTransaction, settings } = useExpenseContext()
   const { triggerTransactionAlert } = useNotificationContext() || {}
   const [localOpen, setLocalOpen] = useState(false)
-  const [transaction, setTransaction] = useState(() => initialTransaction ?? defaultTransaction(settings?.currency || 'USD'))
+  const [transaction, setTransaction] = useState(() => initialTransaction ?? defaultTransaction(settings?.currency || DEFAULT_CURRENCY))
   
   const isControlled = openProp !== undefined && typeof onOpenChange === 'function'
   const modalOpen = isControlled ? openProp : localOpen
   const isEditMode = Boolean(initialTransaction)
   const buttonLabel = triggerLabel || (isEditMode ? 'Edit transaction' : 'Add Transaction')
-  const currency = settings?.currency || 'USD'
+  const currency = settings?.currency || DEFAULT_CURRENCY
 
   useEffect(() => {
     if (modalOpen) {
-      setTransaction(initialTransaction ?? defaultTransaction(settings?.currency || 'USD'))
+      setTransaction(initialTransaction ?? defaultTransaction(settings?.currency || DEFAULT_CURRENCY))
     }
   }, [modalOpen, initialTransaction, settings?.currency])
 
@@ -162,20 +163,15 @@ function AddTransactionModal({ open: openProp, onOpenChange, hideTrigger, initia
                         required
                       />
                       <select
-                        value={transaction.currency || settings?.currency || 'USD'}
+                        value={transaction.currency || settings?.currency || DEFAULT_CURRENCY}
                         onChange={(event) => setTransaction({ ...transaction, currency: event.target.value })}
                         className="rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10"
                       >
-                        <option value="USD">USD</option>
-                        <option value="INR">INR</option>
-                        <option value="EUR">EUR</option>
-                        <option value="GBP">GBP</option>
-                        <option value="JPY">JPY</option>
-                        <option value="CAD">CAD</option>
-                        <option value="AUD">AUD</option>
-                        <option value="AED">AED</option>
-                        <option value="SAR">SAR</option>
-                        <option value="SGD">SGD</option>
+                        {SUPPORTED_CURRENCIES.map((curr) => (
+                          <option key={curr.code} value={curr.code}>
+                            {curr.code}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>

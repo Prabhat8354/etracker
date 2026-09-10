@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, UserCheck, Calendar, DollarSign, Info } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useTripContext } from '../../context/TripContext.jsx'
+import { SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '../../utils/currency.js'
 
-const currencyOptions = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'AED', 'SAR', 'SGD']
+const currencyOptions = SUPPORTED_CURRENCIES.map((c) => c.code)
 
 export default function AddPersonalExpenseModal({ open, onClose, trip, participants = [], initialExpense }) {
   const { addExpense, updateExpense } = useTripContext()
@@ -12,7 +13,7 @@ export default function AddPersonalExpenseModal({ open, onClose, trip, participa
 
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState(trip?.currency || 'INR')
+  const [currency, setCurrency] = useState(trip?.currency || DEFAULT_CURRENCY)
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [notes, setNotes] = useState('')
   const [syncToPersonal, setSyncToPersonal] = useState(true)
@@ -26,14 +27,14 @@ export default function AddPersonalExpenseModal({ open, onClose, trip, participa
       if (initialExpense) {
         setDescription(initialExpense.description || '')
         setAmount(String(initialExpense.amount || ''))
-        setCurrency(initialExpense.currency || trip.currency || 'INR')
+        setCurrency(initialExpense.currency || trip.currency || DEFAULT_CURRENCY)
         setDate(initialExpense.date || new Date().toISOString().slice(0, 10))
         setNotes(initialExpense.notes || '')
         setSyncToPersonal(false)
       } else {
         setDescription('')
         setAmount('')
-        setCurrency(trip.currency || 'INR')
+        setCurrency(trip.currency || DEFAULT_CURRENCY)
         setDate(new Date().toISOString().slice(0, 10))
         setNotes('')
         setSyncToPersonal(true)

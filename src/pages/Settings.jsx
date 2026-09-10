@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import { useNotificationContext } from '../context/NotificationContext.jsx'
+import { SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '../utils/currency.js'
 import EmptyState from '../components/EmptyState.jsx'
 
 function Settings() {
@@ -155,20 +156,15 @@ function Settings() {
                 Global currency
               </label>
               <select
-                value={settings.currency || 'USD'}
+                value={settings?.currency || DEFAULT_CURRENCY}
                 onChange={(event) => updateSetting('currency', event.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-750 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-indigo-400"
               >
-                <option value="USD">USD ($) US Dollar</option>
-                <option value="INR">INR (₹) Indian Rupee</option>
-                <option value="EUR">EUR (€) Euro</option>
-                <option value="GBP">GBP (£) British Pound</option>
-                <option value="JPY">JPY (¥) Japanese Yen</option>
-                <option value="CAD">CAD (C$) Canadian Dollar</option>
-                <option value="AUD">AUD (A$) Australian Dollar</option>
-                <option value="AED">AED UAE Dirham</option>
-                <option value="SAR">SAR Saudi Riyal</option>
-                <option value="SGD">SGD Singapore Dollar</option>
+                {SUPPORTED_CURRENCIES.map((curr) => (
+                  <option key={curr.code} value={curr.code}>
+                    {curr.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -432,20 +428,15 @@ function Settings() {
                   min="0"
                 />
                 <select
-                  value={savingsGoal.currency || 'USD'}
+                  value={savingsGoal.currency || settings?.currency || DEFAULT_CURRENCY}
                   onChange={(event) => updateSavingsGoal({ ...savingsGoal, currency: event.target.value })}
                   className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-2.5 text-xs font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:focus:border-indigo-400"
                 >
-                  <option value="USD">USD</option>
-                  <option value="INR">INR</option>
-                  <option value="EUR">EUR</option>
-                  <option value="GBP">GBP</option>
-                  <option value="JPY">JPY</option>
-                  <option value="CAD">CAD</option>
-                  <option value="AUD">AUD</option>
-                  <option value="AED">AED</option>
-                  <option value="SAR">SAR</option>
-                  <option value="SGD">SGD</option>
+                  {SUPPORTED_CURRENCIES.map((curr) => (
+                    <option key={curr.code} value={curr.code}>
+                      {curr.code}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

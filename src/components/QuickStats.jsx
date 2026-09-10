@@ -2,10 +2,11 @@ import { motion } from 'framer-motion'
 import { DollarSign, ShieldAlert, ShieldCheck, TrendingUp, Clock } from 'lucide-react'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import { formatCurrency } from '../utils/helpers.jsx'
+import { DEFAULT_CURRENCY } from '../utils/currency.js'
 
 function QuickStats({ summary }) {
   const { settings } = useExpenseContext()
-  const currency = settings?.currency || 'USD'
+  const currency = settings?.currency || DEFAULT_CURRENCY
 
   const formatVal = (val) => {
     return formatCurrency(val, currency)

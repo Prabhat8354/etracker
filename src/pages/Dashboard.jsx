@@ -9,12 +9,14 @@ import RecentTransactions from '../components/RecentTransactions.jsx'
 import AddTransactionModal from '../components/AddTransactionModal.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import { formatDate, formatCurrency } from '../utils/helpers.jsx'
+import { DEFAULT_CURRENCY, canConvert } from '../utils/currency.js'
 
 function Dashboard() {
   const { user } = useAuthContext()
   const { summary, filteredTransactions, isLoading, transactions, settings, rates, quote, bills, convertCurrency, savingsGoal } = useExpenseContext()
   const [isModalOpen, setIsModalOpen] = useState(false)
 
+  const activeCurrency = settings?.currency || DEFAULT_CURRENCY
   const profileName = user?.displayName || user?.email?.split('@')[0] || 'User'
   const currentDate = useMemo(
     () => new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
@@ -25,14 +27,14 @@ function Dashboard() {
     const totals = transactions
       .filter((item) => item.type === 'expense')
       .reduce((acc, item) => {
-        const amt = convertCurrency(item.amount, item.currency || 'USD', settings.currency)
+        const amt = convertCurrency(item.amount, item.currency || DEFAULT_CURRENCY, activeCurrency)
         acc[item.category] = (acc[item.category] || 0) + amt
         return acc
       }, {})
 
     const sorted = Object.entries(totals).sort(([, a], [, b]) => b - a)
     return sorted[0]?.[0] || 'No expenses yet'
-  }, [transactions, settings.currency, rates])
+  }, [transactions, activeCurrency, rates])
 
   // Convert USD transactions to display in preferred currency
   const recentActivity = useMemo(() => {
@@ -43,7 +45,7 @@ function Dashboard() {
   const budgetProgress = Math.min(100, Math.round((summary.expense / monthlyBudget) * 100))
 
   // Savings Goal calculations
-  const convertedGoal = convertCurrency(savingsGoal.amount, savingsGoal.currency || 'USD', settings.currency)
+  const convertedGoal = convertCurrency(savingsGoal.amount, savingsGoal.currency || DEFAULT_CURRENCY, activeCurrency)
   const savingsProgress = Math.min(100, Math.round((summary.savings / convertedGoal) * 100)) || 0
   const remainingSavings = Math.max(0, convertedGoal - summary.savings)
 
@@ -201,7 +203,7 @@ function Dashboard() {
               <div className="rounded-2xl border border-slate-200/30 bg-white/40 p-4.5 dark:border-white/[0.02] dark:bg-slate-900/10">
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
                   <span>Monthly budget limit</span>
-                  <span className="font-bold text-slate-800 dark:text-white">{formatCurrency(monthlyBudget, settings.currency)}</span>
+                  <span className="font-bold text-slate-800 dark:text-white">{formatCurrency(monthlyBudget, activeCurrency)}</span>
                 </div>
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/20 dark:border-white/[0.02]">
                   <div
@@ -277,13 +279,13 @@ function Dashboard() {
               <div>
                 <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Saved</p>
                 <p className="text-sm font-bold text-slate-800 dark:text-white">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: settings.currency }).format(summary.savings)}
+                  {formatCurrency(summary.savings, activeCurrency)}
                 </p>
               </div>
               <div>
                 <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Remaining</p>
                 <p className="text-sm font-bold text-slate-800 dark:text-slate-300">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: settings.currency }).format(remainingSavings)}
+                  {formatCurrency(remainingSavings, activeCurrency)}
                 </p>
               </div>
             </div>
@@ -372,11 +374,11 @@ function Dashboard() {
                     <p className={`text-base font-black tracking-tight ${
                       item.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
                     }`}>
-                      {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount, item.currency || 'USD')}
+                      {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount, item.currency || DEFAULT_CURRENCY)}
                     </p>
-                    {item.currency && item.currency !== settings.currency && (
+                    {item.currency && item.currency !== activeCurrency && canConvert(item.currency, activeCurrency, rates) && (
                       <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-                        ≈ {formatCurrency(convertCurrency(item.amount, item.currency, settings.currency), settings.currency)}
+                        ≈ {formatCurrency(convertCurrency(item.amount, item.currency, activeCurrency), activeCurrency)}
                       </p>
                     )}
                   </div>
@@ -434,7 +436,7 @@ function Dashboard() {
                         {badgeText}
                       </span>
                       <span className="text-xs font-extrabold text-slate-800 dark:text-white">
-                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: settings.currency }).format(bill.amount)}
+                        {formatCurrency(bill.amount, bill.currency || activeCurrency)}
                       </span>
                     </div>
                   </div>

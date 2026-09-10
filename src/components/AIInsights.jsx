@@ -14,10 +14,11 @@ import {
 } from 'lucide-react'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
 import { formatCurrency, parseLocalDate } from '../utils/helpers.jsx'
+import { DEFAULT_CURRENCY } from '../utils/currency.js'
 
 function AIInsights() {
   const { transactions, summary, settings, rates, convertCurrency, savingsGoal } = useExpenseContext()
-  const currency = settings?.currency || 'USD'
+  const currency = settings?.currency || DEFAULT_CURRENCY
   const rate = rates[currency] || 1
 
   // 1. Highest spending category
@@ -26,7 +27,7 @@ function AIInsights() {
     transactions
       .filter((item) => item.type === 'expense')
       .forEach((item) => {
-        const amt = convertCurrency(item.amount, item.currency || 'USD', settings.currency)
+        const amt = convertCurrency(item.amount, item.currency || DEFAULT_CURRENCY, settings.currency)
         totals[item.category] = (totals[item.category] || 0) + amt
       })
     const sorted = Object.entries(totals).sort(([, a], [, b]) => b - a)
@@ -35,7 +36,7 @@ function AIInsights() {
 
   // 2. Goal proximity details
   const goalProximity = useMemo(() => {
-    const goal = convertCurrency(savingsGoal.amount, savingsGoal.currency || 'USD', settings.currency)
+    const goal = convertCurrency(savingsGoal.amount, savingsGoal.currency || DEFAULT_CURRENCY, settings.currency)
     const completionRate = Math.min(100, Math.round((summary.savings / goal) * 100)) || 0
     if (completionRate >= 100) {
       return { msg: 'Target savings goal achieved!', rate: completionRate, action: 'Outstanding savings performance.' }
@@ -51,7 +52,7 @@ function AIInsights() {
     const totalFoodUSD = transactions
       .filter((t) => t.type === 'expense' && t.category.toLowerCase() === 'groceries')
       .reduce((sum, t) => {
-        const fromRate = rates[t.currency || 'USD'] || 1
+        const fromRate = rates[t.currency || DEFAULT_CURRENCY] || 1
         return sum + (Number(t.amount) / fromRate)
       }, 0)
 
@@ -72,7 +73,7 @@ function AIInsights() {
       const date = parseLocalDate(t.date)
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       if (!monthlyNet[key]) monthlyNet[key] = 0
-      const fromRate = rates[t.currency || 'USD'] || 1
+      const fromRate = rates[t.currency || DEFAULT_CURRENCY] || 1
       const usdAmount = Number(t.amount) / fromRate
       if (t.type === 'income') {
         monthlyNet[key] += usdAmount

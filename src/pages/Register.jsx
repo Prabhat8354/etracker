@@ -2,14 +2,15 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../context/AuthContext.jsx'
 import { useExpenseContext } from '../context/ExpenseContext.jsx'
+import { SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '../utils/currency.js'
 import toast from 'react-hot-toast'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff, ShieldCheck, Mail, Lock, User, Sparkles, CheckCircle, Sun, Moon } from 'lucide-react'
+import { Eye, EyeOff, ShieldCheck, Mail, Lock, User, Sparkles, CheckCircle, Sun, Moon, Coins } from 'lucide-react'
 
 function Register() {
   const { signUp, authLoading } = useAuthContext()
   const { darkMode, setDarkMode } = useExpenseContext()
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', currency: DEFAULT_CURRENCY })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [shakeOnError, setShakeOnError] = useState(false)
@@ -31,7 +32,12 @@ function Register() {
     }
 
     try {
-      await signUp({ name: form.name.trim(), email: form.email.trim(), password: form.password })
+      await signUp({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        currency: form.currency || DEFAULT_CURRENCY
+      })
       toast.success('Registration successful. Redirecting...')
       navigate('/dashboard')
     } catch (error) {
@@ -212,6 +218,37 @@ function Register() {
                   >
                     {showConfirmPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
                   </button>
+                </div>
+              </div>
+
+              {/* Preferred Currency with Static Label */}
+              <div className="space-y-1.5 text-left">
+                <label
+                  htmlFor="reg-currency"
+                  className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                >
+                  Preferred Currency
+                </label>
+                <div className="relative">
+                  <select
+                    id="reg-currency"
+                    value={form.currency}
+                    onChange={(event) => setForm({ ...form, currency: event.target.value })}
+                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 pr-10 text-sm font-semibold text-slate-900 dark:text-white outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 cursor-pointer appearance-none"
+                  >
+                    {SUPPORTED_CURRENCIES.map((curr) => (
+                      <option
+                        key={curr.code}
+                        value={curr.code}
+                        className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      >
+                        {curr.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500">
+                    <Coins className="h-4.5 w-4.5" />
+                  </div>
                 </div>
               </div>
 
